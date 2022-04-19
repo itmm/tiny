@@ -1,6 +1,6 @@
 .PHONY: tests clean
 
-APP = tiny
+APP = calc
 SOURCEs = $(wildcard *.cpp)
 OBJECTs = $(addprefix build/,$(SOURCEs:.cpp=.o))
 
@@ -8,7 +8,9 @@ CXXFLAGS += -g -Wall -std=c++17
 
 tests: $(APP)
 	@echo "run tests"
-	@./$(APP) 
+	./calc "with a: 3*a" | llc -filetype=obj -o=expr.o
+	clang -o expr expr.o rtcalc.c
+	echo 4 | ./expr
 
 include $(wildcard deps/*.dep)
 
