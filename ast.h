@@ -2,6 +2,7 @@
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/SMLoc.h"
 
 class AST;
 class Expr;
@@ -68,4 +69,32 @@ class With_Decl: public Expr {
 		Var_Vector::const_iterator end() { return vars_.end(); }
 		Expr *expr() { return e_; }
 		void accept(AST_Visitor &v) override { v.visit(*this); }
+};
+
+class Decl {
+	public:
+		enum Decl_Kind {
+			dk_module, dk_const, dk_type, dk_var, dk_param,
+			dk_proc
+		};
+	private:
+		Decl_Kind kind_;
+	protected:
+		Decl *enclosing_decl_;
+		llvm::SMLoc loc_;
+		llvm::StringRef name_;
+
+	public:
+		Decl(
+			Decl_Kind kind, Decl *enclosing_decl, llvm::SMLoc loc,
+			llvm::StringRef name
+		):
+			kind_ { kind }, enclosing_decl_ { enclosing_decl },
+			loc_ { loc }, name_ { name }
+		{ }
+
+		Decl_Kind kind() const { return kind_; }
+		llvm::SMLoc location() { return loc_; }
+		llvm::StringRef name() { return name_; }
+		Decl *enclosing_decl() { return enclosing_decl_; }
 };
