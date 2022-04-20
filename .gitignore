@@ -1,5 +1,3 @@
 build
 deps
-calc
-expr
-expr.o
+tiny
