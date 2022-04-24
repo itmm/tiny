@@ -46,7 +46,7 @@ Expr *Parser::parse_factor() {
 			res = parse_expr();
 			consume(Token_Kind::r_paren);
 		default:
-			throw Error { "no factor: '" + (std::string) tok_.raw() + "'" };
+			throw Error { "no factor: '" + tok_.raw() + "'" };
 	}
 	return res;
 }
@@ -83,7 +83,7 @@ void Parser::parse_qual_ident(Decl *decl) {
 	expect(Token_Kind::identifier);
 	auto got { current_scope->lookup(tok_.identifier()) };
 	if (! got) {
-		throw Error { "unknown identifier '" + (std::string) tok_.identifier() + "'" };
+		throw Error { "unknown identifier '" + tok_.identifier() + "'" };
 	}
 	advance();
 	decl = got;
@@ -129,8 +129,8 @@ void Parser::parse_module() {
 	consume(Token_Kind::kw_END);
 	expect(Token_Kind::identifier);
 	if (tok_.identifier() != name) {
-		throw Error { "MODULE '" + (std::string) name + "' ends in name '" +
-			(std::string) tok_.identifier() + "'" };
+		throw Error { "MODULE '" + name + "' ends in name '" +
+			tok_.identifier() + "'" };
 	}
 	advance();
 	consume(Token_Kind::period);

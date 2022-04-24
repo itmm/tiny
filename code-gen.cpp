@@ -63,8 +63,7 @@ namespace {
 				if (node.kind() == Factor::ident) {
 					value_ = name_map_[node.value()];
 				} else {
-					int int_val;
-					node.value().getAsInteger(10, int_val);
+				int int_val = std::stoi(node.value(), nullptr, 10);
 					value_ = llvm::ConstantInt::get(int32_ty_, int_val, true);
 				}
 			}

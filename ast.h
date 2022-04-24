@@ -1,9 +1,6 @@
 #pragma once
 
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Support/SMLoc.h"
-
+#include <string>
 #include <vector>
 
 class AST;
@@ -33,11 +30,11 @@ class Factor: public Expr {
 		enum Kind { ident, number };
 	private:
 		Kind kind_;
-		llvm::StringRef value_;
+		std::string value_;
 	public:
-		Factor(Kind kind, llvm::StringRef value): kind_ { kind }, value_ { value } { }
+		Factor(Kind kind, std::string value): kind_ { kind }, value_ { value } { }
 		Kind kind() const { return kind_; }
-		llvm::StringRef value() const { return value_; }
+		std::string value() const { return value_; }
 		void accept(AST_Visitor &v) override { v.visit(*this); }
 			
 };
@@ -60,11 +57,11 @@ class Binary_Op: public Expr {
 };
 
 class With_Decl: public Expr {
-		using Var_Vector = llvm::SmallVector<llvm::StringRef, 8>;
+		using Var_Vector = std::vector<std::string>;
 		Var_Vector vars_;
 		Expr *e_;
 	public:
-		With_Decl(llvm::SmallVector<llvm::StringRef, 8> vars, Expr *e):
+		With_Decl(Var_Vector vars, Expr *e):
 			vars_ { vars }, e_ { e }
 		{ }
 		Var_Vector::const_iterator begin() { return vars_.begin(); }
@@ -83,28 +80,28 @@ class Decl {
 		Decl_Kind kind_;
 	protected:
 		Decl *enclosing_decl_;
-		llvm::StringRef name_;
+		std::string name_;
 
 	public:
-		Decl(Decl_Kind kind, Decl *enclosing_decl, llvm::StringRef name):
+		Decl(Decl_Kind kind, Decl *enclosing_decl, std::string name):
 			kind_ { kind }, enclosing_decl_ { enclosing_decl },
 			name_ { name }
 		{ }
 
 		Decl_Kind kind() const { return kind_; }
-		llvm::StringRef name() { return name_; }
+		const std::string &name() const { return name_; }
 		Decl *enclosing_decl() { return enclosing_decl_; }
 };
 
 using Decl_List = std::vector<Decl *>;
-using Ident_List = std::vector<llvm::StringRef>;
+using Ident_List = std::vector<std::string>;
 
 class Type_Declaration;
 
 class Variable_Declaration: public Decl {
 		Type_Declaration *type_;
 	public:
-		Variable_Declaration(Decl *enclosing_decl, llvm::StringRef name, Type_Declaration *type):
+		Variable_Declaration(Decl *enclosing_decl, std::string name, Type_Declaration *type):
 			Decl(dk_var, enclosing_decl, name), type_ { type }
 		{ }
 

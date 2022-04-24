@@ -1,4 +1,4 @@
-.PHONY: tests clean
+.PHONY: tests clean lines
 
 APP = tiny
 SOURCEs = $(wildcard *.cpp)
@@ -24,3 +24,7 @@ $(APP): $(OBJECTs)
 clean:
 	@echo "clean"
 	@rm -Rf $(APP) build deps expr expr.o
+
+lines:
+	@echo "lines"
+	@cat $(SOURCEs) $(wildcard *.h) $(wildcard *.mod) | wc -l
