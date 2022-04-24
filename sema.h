@@ -5,5 +5,5 @@
 
 class Sema {
 	public:
-		void act_on_variable_declaration(Decl_List &decls, Ident_List &ids, Decl *d);
+		void act_on_variable_declaration(Decl_List &decls, Ident_List &ids, Declaration *d);
 };

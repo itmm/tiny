@@ -127,7 +127,7 @@ void Parser::parse_ident_list(Ident_List &ids) {
 	}
 }
 
-Decl *Parser::parse_qual_ident() {
+Declaration *Parser::parse_qual_ident() {
 	expect(Token_Kind::identifier);
 	auto got { current_scope->lookup(tok_.identifier()) };
 	if (! got) {
@@ -141,7 +141,7 @@ void Parser::parse_variable_declaration(Decl_List &decls) {
 	Ident_List ids;
 	parse_ident_list(ids);
 	consume(Token_Kind::colon);
-	Decl *d { parse_qual_ident() };
+	Declaration *d { parse_qual_ident() };
 	actions_.act_on_variable_declaration(decls, ids, d);
 }
 
@@ -238,11 +238,13 @@ void Parser::parse_declaration_sequence() {
 	}
 }
 
-void Parser::parse_module() {
+Module_Declaration *Parser::parse_module() {
 	consume(Token_Kind::kw_MODULE);
 	expect(Token_Kind::identifier);
-	auto name = tok_.identifier();
-	// TODO: act on module creation
+	auto mod = new Module_Declaration { nullptr, tok_.identifier() };
+	current_scope->insert(mod);
+	Pushed_Scope pushed { mod };
+
 	advance();
 	consume(Token_Kind::semicolon);
 	
@@ -258,11 +260,12 @@ void Parser::parse_module() {
 
 	consume(Token_Kind::kw_END);
 	expect(Token_Kind::identifier);
-	if (tok_.identifier() != name) {
-		throw Error { "MODULE '" + name + "' ends in name '" +
+	if (tok_.identifier() != mod->name()) {
+		throw Error { "MODULE '" + mod->name() + "' ends in name '" +
 			tok_.identifier() + "'" };
 	}
 	advance();
 	consume(Token_Kind::period);
+	return mod;
 };
 

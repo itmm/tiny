@@ -2,26 +2,26 @@
 
 #include "ast.h"
 
+Declaration *parent_declaration = nullptr;
+
 class Initial_Scope: public Scope {
 	public:
-		Initial_Scope() {
-			auto int_ty { new Type_Declaration(nullptr, "INTEGER") };
-			insert(int_ty);
-			auto bool_ty { new Type_Declaration(nullptr, "BOOL") };
-			insert(bool_ty);
+		Initial_Scope(): Scope { nullptr } {
+			insert(new Type_Declaration(nullptr, "INTEGER"));
+			insert(new Type_Declaration(nullptr, "BOOL"));
 		}
 };
 
 Scope *current_scope = new Initial_Scope { };
 
-bool Scope::insert(Decl *declaration) {
+bool Scope::insert(Declaration *declaration) {
 	return symbols_.insert({ declaration->name(), declaration }).second;
 }
 
-Decl *Scope::lookup(std::string name) {
+Declaration *Scope::lookup(std::string name) {
 	for (Scope *cur { this }; cur; cur = cur->parent_) {
-		auto got { symbols_.find(name) };
-		if (got != symbols_.end()) { return got->second; }
+		auto got { cur->symbols_.find(name) };
+		if (got != cur->symbols_.end()) { return got->second; }
 	}
 	return nullptr;
 }

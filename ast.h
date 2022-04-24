@@ -70,47 +70,47 @@ class With_Decl: public Expr {
 		void accept(AST_Visitor &v) override { v.visit(*this); }
 };
 
-class Decl {
-	public:
-		enum Decl_Kind {
-			dk_module, dk_const, dk_type, dk_var, dk_param,
-			dk_proc
-		};
-	private:
-		Decl_Kind kind_;
-	protected:
-		Decl *enclosing_decl_;
-		std::string name_;
+class Declaration {
+		const Declaration *enclosing_declaration_;
+		const std::string name_;
 
 	public:
-		Decl(Decl_Kind kind, Decl *enclosing_decl, std::string name):
-			kind_ { kind }, enclosing_decl_ { enclosing_decl },
-			name_ { name }
+		Declaration(Declaration *enclosing_declaration, std::string name):
+			enclosing_declaration_ { enclosing_declaration }, name_ { name }
 		{ }
+		virtual ~Declaration() { }
 
-		Decl_Kind kind() const { return kind_; }
 		const std::string &name() const { return name_; }
-		Decl *enclosing_decl() { return enclosing_decl_; }
+		const Declaration *enclosing_decl() const { return enclosing_declaration_; }
 };
 
-using Decl_List = std::vector<Decl *>;
+using Decl_List = std::vector<Declaration *>;
 using Ident_List = std::vector<std::string>;
 
-class Type_Declaration: public Decl {
+class Module_Declaration: public Declaration {
 	public:
-		Type_Declaration(Decl *enclosing_decl, std::string name):
-			Decl(dk_type, enclosing_decl, name)
+		Module_Declaration(Declaration *enclosing_declaration, std::string name):
+			Declaration(enclosing_declaration, name)
 		{ }
 };
 
-class Variable_Declaration: public Decl {
+class Type_Declaration: public Declaration {
+	public:
+		Type_Declaration(Declaration *enclosing_declaration, std::string name):
+			Declaration(enclosing_declaration, name)
+		{ }
+};
+
+class Variable_Declaration: public Declaration {
 		Type_Declaration *type_;
 	public:
-		Variable_Declaration(Decl *enclosing_decl, std::string name, Type_Declaration *type):
-			Decl(dk_var, enclosing_decl, name), type_ { type }
+		Variable_Declaration(
+			Declaration *enclosing_declaration, std::string name,
+			Type_Declaration *type
+		):
+			Declaration(enclosing_declaration, name), type_ { type }
 		{ }
 
 		Type_Declaration *type() { return type_; }
-		static bool classof(const Decl *d) { return d->kind() == dk_var; }
 };
 
