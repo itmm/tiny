@@ -1,58 +1,51 @@
 #pragma once
 
 #include "ast.h"
+#include "err.h"
 #include "lexer.h"
+#include "sema.h"
 
 #include "llvm/Support/raw_ostream.h"
 
+using namespace std::literals::string_literals;
+
 class Parser {
 		Lexer &lexer_;
+		Sema &actions_;
 		Token tok_;
-		bool has_error_ { false };
 
 		void error() {
-			llvm::errs() << "Unexpected: '" << tok_.raw() << "'\n";
-			has_error_ = true;
+			throw Error { "Unexpected: '" + (std::string) tok_.raw() + "'\n" };
 		}
 
 		void advance() { lexer_.next(tok_); }
 
-		bool expect(Token_Kind k) {
-			if (tok_.kind() != k) {
-				error();
-				return true;
-			}
-			return false;
+		void expect(Token_Kind k) {
+			if (tok_.kind() != k) { error(); }
 		}
 
-		bool consume(Token_Kind k) {
-			if (expect(k)) { return true; }
-			advance();
-			return false;
+		void consume(Token_Kind k) {
+			expect(k); advance();
 		}
 
-		template<typename... Ts>
-			bool skip_until(Ts... ks) {
-				while (! tok_.is(Token_Kind::eoi) && ! tok_.is_one_of(ks...)) {
-					advance();
-				}
-				return true;
-			}
-
-		AST *parse_calc();
 		Expr *parse_expr();
 		Expr *parse_term();
 		Expr *parse_factor();
-		bool parse_statement_sequence();
-		bool parse_if();
+		void parse_statement_sequence();
+		void parse_if();
+
+		void parse_ident_list(Ident_List &ids);
+		void parse_qual_ident(Decl *decl);
+		void parse_variable_declaration(Decl_List &decls);
+		void parse_module();
 
 	public:
-		Parser(Lexer &lexer): lexer_ { lexer } {
+		Parser(Lexer &lexer, Sema &actions):
+			lexer_ { lexer }, actions_ { actions }
+		{
 			advance();
 	       	}
 
-		bool has_error() const { return has_error_; }
-
-		AST *parse();
+		void parse();
 };
 

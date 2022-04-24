@@ -2,6 +2,14 @@
 
 #include "ast.h"
 
+class Initial_Scope: public Scope {
+	public:
+		Initial_Scope() {
+		}
+};
+
+Scope *current_scope = new Initial_Scope { };
+
 bool Scope::insert(Decl *declaration) {
 	return symbols_.insert({ declaration->name(), declaration }).second;
 }

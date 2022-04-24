@@ -4,6 +4,8 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/SMLoc.h"
 
+#include <vector>
+
 class AST;
 class Expr;
 class Factor;
@@ -81,20 +83,32 @@ class Decl {
 		Decl_Kind kind_;
 	protected:
 		Decl *enclosing_decl_;
-		llvm::SMLoc loc_;
 		llvm::StringRef name_;
 
 	public:
-		Decl(
-			Decl_Kind kind, Decl *enclosing_decl, llvm::SMLoc loc,
-			llvm::StringRef name
-		):
+		Decl(Decl_Kind kind, Decl *enclosing_decl, llvm::StringRef name):
 			kind_ { kind }, enclosing_decl_ { enclosing_decl },
-			loc_ { loc }, name_ { name }
+			name_ { name }
 		{ }
 
 		Decl_Kind kind() const { return kind_; }
-		llvm::SMLoc location() { return loc_; }
 		llvm::StringRef name() { return name_; }
 		Decl *enclosing_decl() { return enclosing_decl_; }
 };
+
+using Decl_List = std::vector<Decl *>;
+using Ident_List = std::vector<llvm::StringRef>;
+
+class Type_Declaration;
+
+class Variable_Declaration: public Decl {
+		Type_Declaration *type_;
+	public:
+		Variable_Declaration(Decl *enclosing_decl, llvm::StringRef name, Type_Declaration *type):
+			Decl(dk_var, enclosing_decl, name), type_ { type }
+		{ }
+
+		Type_Declaration *type() { return type_; }
+		static bool classof(const Decl *d) { return d->kind() == dk_var; }
+};
+

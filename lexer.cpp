@@ -1,46 +1,66 @@
 #include "lexer.h"
 
-#include "llvm/ADT/StringMap.h"
+#include "err.h"
 
-static llvm::StringMap<Token_Kind> keywords {
+#include <map>
+
+using namespace std::literals::string_literals;
+
+class Unknown_Char_Err: public Error {
+	public:
+		Unknown_Char_Err(char ch):
+			Error { "unknown input character '"s + ch + "'\n"s }
+		{ }
+};
+
+static std::map<std::string, Token_Kind> keywords {
 	{ "BEGIN", Token_Kind::kw_BEGIN },
 	{ "CONST", Token_Kind::kw_CONST },
 	{ "IF", Token_Kind::kw_IF },
+	{ "IMPORT", Token_Kind::kw_IMPORT },
 	{ "ELSE", Token_Kind::kw_ELSE },
+	{ "ELSIF", Token_Kind::kw_ELSIF },
 	{ "END", Token_Kind::kw_END },
+	{ "MODULE", Token_Kind::kw_MODULE },
+	{ "PROCEDURE", Token_Kind::kw_PROCEDURE },
 	{ "THEN", Token_Kind::kw_THEN },
+	{ "TYPE", Token_Kind::kw_TYPE },
+	{ "VAR", Token_Kind::kw_VAR },
 	{ "WITH", Token_Kind::kw_WITH }
 };
 
 namespace Char_Info {
-	LLVM_READNONE inline bool is_whitespace(char c) {
+	inline bool is_whitespace(int c) {
 		return c == ' ' || c == '\t' || c == '\f' || c == '\v' ||
 			c == '\r' || c == '\n';
 	}
-	LLVM_READNONE inline bool is_digit(char c) {
+	inline bool is_digit(int c) {
 		return c >= '0' && c <= '9';
 	}
-	LLVM_READNONE inline bool is_letter(char c) {
+	inline bool is_letter(int c) {
 		return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 	}
 }
 
 void Lexer::next(Token &tok) {
-	while (*ptr_ && Char_Info::is_whitespace(*ptr_)) { ++ptr_; }
-	if (! *ptr_) { tok.kind_ = Token_Kind::eoi; return; }
-	if (Char_Info::is_letter(*ptr_)) {
-		const char *end { ptr_ + 1 };
-		while (Char_Info::is_letter(*end)) { ++end; }
-		llvm::StringRef name(ptr_, end - ptr_);
+	while (Char_Info::is_whitespace(ch_)) { ch_ = in_.get(); }
+	if (ch_ == EOF) { tok.kind_ = Token_Kind::eoi; return; }
+	if (Char_Info::is_letter(ch_)) {
+		std::string name;
+		while (Char_Info::is_letter(ch_)) {
+			name += ch_; ch_ = in_.get();
+		}
 		auto got { keywords.find(name) };
 		Token_Kind k = got != keywords.end() ? got->second : Token_Kind::identifier;
-		set_token(tok, end, k);
-	} else if (Char_Info::is_digit(*ptr_)) {
-		const char *end { ptr_ + 1 };
-		while (Char_Info::is_digit(*end)) { ++end; }
-		set_token(tok, end, Token_Kind::integer_literal);
-	} else switch (*ptr_) {
-		#define CASE(ch, tk) case ch: set_token(tok, ptr_ + 1, tk); break
+		set_token(tok, name, k);
+	} else if (Char_Info::is_digit(ch_)) {
+		std::string name;
+		while (Char_Info::is_digit(ch_)) {
+			name += ch_; ch_ = in_.get();
+		}
+		set_token(tok, name, Token_Kind::integer_literal);
+	} else switch (ch_) {
+		#define CASE(ch, tk) case ch: set_token(tok, ch, tk); ch_ = in_.get(); break
 		CASE('+', Token_Kind::plus);
 		CASE('-', Token_Kind::minus);
 		CASE('*', Token_Kind::star);
@@ -50,23 +70,29 @@ void Lexer::next(Token &tok) {
 		CASE(':', Token_Kind::colon);
 		CASE(',', Token_Kind::comma);
 		CASE(';', Token_Kind::semicolon);
+		CASE('.', Token_Kind::period);
 		#undef CASE
 		case '<':
-			if (ptr_[1] == '=') {
-				set_token(tok, ptr_ + 2, Token_Kind::less_equal);
+			ch_ = in_.get();
+			if (ch_ == '=') {
+				set_token(tok, "<=", Token_Kind::less_equal);
+				ch_ = in_.get();
 			} else {
-				set_token(tok, ptr_ + 1, Token_Kind::less);
+				set_token(tok, "<", Token_Kind::less);
 			}
 			break;
-		default: set_token(tok, ptr_ + 1, Token_Kind::unknown);
+		default: throw Unknown_Char_Err { static_cast<char>(ch_) };
 
 
 	}
 }
 
-void Lexer::set_token(Token &tok, const char *end, Token_Kind kind) {
+void Lexer::set_token(Token &tok, std::string raw, Token_Kind kind) {
 	tok.kind_ = kind;
-	tok.ptr_ = ptr_;
-	tok.length_ = end - ptr_;
-	ptr_ = end;
+	tok.raw_ = raw;
 }
+
+void Lexer::set_token(Token &tok, char raw, Token_Kind kind) {
+	set_token(tok, std::string { } + raw, kind);
+}
+

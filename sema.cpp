@@ -54,3 +54,7 @@ bool Sema::semantic(AST *tree) {
 	tree->accept(ck);
 	return ck.has_error();
 }
+
+void Sema::act_on_variable_declaration(Decl_List &decls, Ident_List &ids, Decl *d) {
+}
+

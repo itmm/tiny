@@ -14,3 +14,5 @@ class Scope {
 		Decl *lookup(llvm::StringRef name);
 		Scope *parent() { return parent_; }
 };
+
+extern Scope *current_scope;

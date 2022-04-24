@@ -1,33 +1,9 @@
 #include "parser.h"
+#include "scope.h"
 
-AST *Parser::parse() {
-	auto res { parse_calc() };
+void Parser::parse() {
+	parse_module();
 	expect(Token_Kind::eoi);
-	return res;
-}
-
-AST *Parser::parse_calc() {
-	Expr *e;
-	llvm::SmallVector<llvm::StringRef, 8> vars;
-	if (tok_.is(Token_Kind::kw_WITH)) {
-		advance();
-		if (expect(Token_Kind::identifier)) { goto error_; }
-		vars.push_back(tok_.identifier());
-		advance();
-		while (tok_.is(Token_Kind::comma)) {
-			advance();
-			if (expect(Token_Kind::identifier)) { goto error_; }
-			vars.push_back(tok_.identifier());
-			advance();
-		}
-		if (consume(Token_Kind::colon)) { goto error_; }
-	}
-	e = parse_expr();
-	if (vars.empty()) { return e; }
-	return new With_Decl { vars, e };
-error_:
-	while (! tok_.is(Token_Kind::eoi)) { advance(); }
-	return nullptr;
 }
 
 Expr *Parser::parse_expr() {
@@ -68,40 +44,95 @@ Expr *Parser::parse_factor() {
 		case Token_Kind::l_paren:
 			advance();
 			res = parse_expr();
-			if (! consume(Token_Kind::r_paren)) { break; }
-			// fallthrough
+			consume(Token_Kind::r_paren);
 		default:
-			if (! res) { error(); }
-			while (! tok_.is_one_of(
-				Token_Kind::r_paren, Token_Kind::star,
-				Token_Kind::plus, Token_Kind::minus,
-				Token_Kind::slash, Token_Kind::eoi
-			)) {
-				advance();
-			}
+			throw Error { "no factor: '" + (std::string) tok_.raw() + "'" };
 	}
 	return res;
 }
 
-bool Parser::parse_statement_sequence() {
-	return true;
+void Parser::parse_statement_sequence() {
+	throw Error { "Statement_Sequence not implemented yet" };
 }
 
-bool Parser::parse_if() {
-	auto error_handler = [this] {
-		return skip_until(
-			Token_Kind::semicolon, Token_Kind::kw_ELSE,
-			Token_Kind::kw_END
-		);
-	};
-	if (consume(Token_Kind::kw_IF)) { return error_handler(); }
-	if (parse_expr()) { return error_handler(); }
-	if (consume(Token_Kind::kw_THEN)) { return error_handler(); }
-	if (parse_statement_sequence()) { return error_handler(); }
+void Parser::parse_if() {
+	consume(Token_Kind::kw_IF);
+	parse_expr();
+	consume(Token_Kind::kw_THEN);
+	parse_statement_sequence();
 	if (tok_.is(Token_Kind::kw_ELSE)) {
 		advance();
-		if (parse_statement_sequence()) { return error_handler(); }
+		parse_statement_sequence();
 	}
-	if (consume(Token_Kind::kw_END)) { return error_handler(); }
-	return false;
+	consume(Token_Kind::kw_END);
 };
+
+void Parser::parse_ident_list(Ident_List &ids) {
+	expect(Token_Kind::identifier);
+	ids.push_back(tok_.identifier());
+	advance();
+	while (tok_.is(Token_Kind::comma)) {
+		advance();
+		expect(Token_Kind::identifier);
+		ids.push_back(tok_.identifier());
+		advance();
+	}
+}
+
+void Parser::parse_qual_ident(Decl *decl) {
+	expect(Token_Kind::identifier);
+	auto got { current_scope->lookup(tok_.identifier()) };
+	if (! got) {
+		throw Error { "unknown identifier '" + (std::string) tok_.identifier() + "'" };
+	}
+	advance();
+	decl = got;
+}
+
+void Parser::parse_variable_declaration(Decl_List &decls) {
+	Decl *d { nullptr };
+	Ident_List ids;
+	parse_ident_list(ids);
+	consume(Token_Kind::colon);
+	parse_qual_ident(d);
+	actions_.act_on_variable_declaration(decls, ids, d);
+}
+
+void Parser::parse_module() {
+	consume(Token_Kind::kw_MODULE);
+	expect(Token_Kind::identifier);
+	auto name = tok_.identifier();
+	// TODO: act on module creation
+	advance();
+	consume(Token_Kind::semicolon);
+	
+	if (tok_.is(Token_Kind::kw_IMPORT)) {
+		throw Error { "IMPORT not implemented" };
+	}
+
+	for (;;) {
+		if (tok_.is(Token_Kind::kw_PROCEDURE)) {
+			throw Error { "PROCEDURE not implemented" };
+		} else if (tok_.is(Token_Kind::kw_CONST)) {
+			throw Error { "CONST not implemented" };
+		} else if (tok_.is(Token_Kind::kw_VAR)) {
+			throw Error { "VAR not implemented" };
+		} else if (tok_.is(Token_Kind::kw_TYPE)) {
+			throw Error { "TYPE not imp]emented" };
+		} else break;
+	}
+
+	if (tok_.is(Token_Kind::kw_BEGIN)) {
+		throw Error { "MODULE statements not implemented" };
+	}
+
+	consume(Token_Kind::kw_END);
+	expect(Token_Kind::identifier);
+	if (tok_.identifier() != name) {
+		throw Error { "MODULE '" + (std::string) name + "' ends in name '" +
+			(std::string) tok_.identifier() + "'" };
+	}
+	advance();
+	consume(Token_Kind::period);
+};
+

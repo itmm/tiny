@@ -1,34 +1,31 @@
 #include "code-gen.h"
+#include "err.h"
 #include "parser.h"
 #include "sema.h"
 
-#include "llvm/Support/CommandLine.h"
+#include <fstream>
+#include <iostream>
+
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"
 
-static llvm::cl::opt<std::string> input (
-	llvm::cl::Positional, llvm::cl::desc("<input expression>"),
-	llvm::cl::init("")
-);
-
 int main(int argc, const char **argv) {
 	llvm::InitLLVM x(argc, argv);
-	llvm::cl::ParseCommandLineOptions(
-		argc, argv, "calc - the expression compiler\n"
-	);
-	Lexer lexer(input);
-	Parser parser(lexer);
-	AST *tree = parser.parse();
-	if (! tree || parser.has_error()) {
-		llvm::errs() << "syntax errors occured\n";
-		return 1;
+
+	try {
+		for (auto cur { argv + 1}, end { argv + argc }; cur != end; ++cur) {
+			if (**cur == '-') { continue; }
+			std::cout << "compiling '" << *cur << "'\n";
+			std::ifstream in { *cur };
+			if (! in) { throw Error { "cannot open '"s + *cur + "' for reading" }; }
+			Lexer lexer { in };
+			Sema sema;
+			Parser parser { lexer, sema };
+			parser.parse();
+		}
+	} catch (const Error &e) {
+		std::cerr << "error: " << e.what() << '\n';
+		return 10;
 	}
-	Sema semantic;
-	if (semantic.semantic(tree)) {
-		llvm::errs() << "semantic errors occured\n";
-		return 1;
-	}
-	Code_Gen code_gen;
-	code_gen.compile(tree);
 	return 0;
 }

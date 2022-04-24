@@ -8,9 +8,7 @@ CXXFLAGS += -g -Wall -std=c++17
 
 tests: $(APP)
 	@echo "run tests"
-	#./calc "WITH a: 3*a" | llc -filetype=obj -o=expr.o
-	#clang -o expr expr.o rtcalc.c
-	#echo 4 | ./expr
+	./$(APP) Gcd.mod
 
 include $(wildcard deps/*.dep)
 
