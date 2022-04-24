@@ -208,6 +208,8 @@ void Parser::parse_procedure_body() {
 
 void Parser::parse_procedure_declaration() {
 	auto name { parse_procedure_heading() };
+	auto p { new Procedure_Declaration { parent_declaration, name } };
+	Pushed_Scope pushed { p };
 	consume(Token_Kind::semicolon);
 	parse_procedure_body();
 	expect(Token_Kind::identifier);

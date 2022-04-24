@@ -94,6 +94,13 @@ class Module_Declaration: public Declaration {
 		{ }
 };
 
+class Procedure_Declaration: public Declaration {
+	public:
+		Procedure_Declaration(Declaration *enclosing_declaration, std::string name):
+			Declaration(enclosing_declaration, name)
+		{ }
+};
+
 class Type_Declaration: public Declaration {
 	public:
 		Type_Declaration(Declaration *enclosing_declaration, std::string name):
