@@ -14,18 +14,24 @@ class Unknown_Char_Err: public Error {
 };
 
 static std::map<std::string, Token_Kind> keywords {
+	{ "ARRAY", Token_Kind::kw_ARRAY },
 	{ "BEGIN", Token_Kind::kw_BEGIN },
 	{ "CONST", Token_Kind::kw_CONST },
+	{ "DO", Token_Kind::kw_DO },
 	{ "IF", Token_Kind::kw_IF },
 	{ "IMPORT", Token_Kind::kw_IMPORT },
 	{ "ELSE", Token_Kind::kw_ELSE },
 	{ "ELSIF", Token_Kind::kw_ELSIF },
 	{ "END", Token_Kind::kw_END },
+	{ "MOD", Token_Kind::kw_MOD },
 	{ "MODULE", Token_Kind::kw_MODULE },
+	{ "OF", Token_Kind::kw_OF },
 	{ "PROCEDURE", Token_Kind::kw_PROCEDURE },
+	{ "RETURN", Token_Kind::kw_RETURN },
 	{ "THEN", Token_Kind::kw_THEN },
 	{ "TYPE", Token_Kind::kw_TYPE },
 	{ "VAR", Token_Kind::kw_VAR },
+	{ "WHILE", Token_Kind::kw_WHILE },
 	{ "WITH", Token_Kind::kw_WITH }
 };
 
@@ -70,11 +76,20 @@ void Lexer::next(Token &tok) {
 		CASE('/', Token_Kind::slash);
 		CASE('(', Token_Kind::l_paren);
 		CASE(')', Token_Kind::r_paren);
-		CASE(':', Token_Kind::colon);
 		CASE(',', Token_Kind::comma);
 		CASE(';', Token_Kind::semicolon);
 		CASE('.', Token_Kind::period);
+		CASE('#', Token_Kind::not_equal);
 		#undef CASE
+		case ':':
+			ch_ = in_.get();
+			if (ch_ == '=') {
+				set_token(tok, ":=", Token_Kind::assign);
+				ch_ = in_.get();
+			} else {
+				set_token(tok, ":", Token_Kind::colon);
+			}
+			break;
 		case '<':
 			ch_ = in_.get();
 			if (ch_ == '=') {

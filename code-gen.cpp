@@ -86,6 +86,9 @@ namespace {
 					case Binary_Op::div:
 						value_ = builder_.CreateSDiv(left, right);
 						break;
+					default:
+						// TODO not implemented
+						break;
 				}
 			}
 	};

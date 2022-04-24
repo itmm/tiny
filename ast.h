@@ -41,7 +41,7 @@ class Factor: public Expr {
 
 class Binary_Op: public Expr {
 	public:
-		enum Operator { plus, minus, mul, div };
+		enum Operator { plus, minus, mul, div, not_equal, mod };
 	private:
 		Expr *left_;
 		Expr *right_;
@@ -96,7 +96,12 @@ class Decl {
 using Decl_List = std::vector<Decl *>;
 using Ident_List = std::vector<std::string>;
 
-class Type_Declaration;
+class Type_Declaration: public Decl {
+	public:
+		Type_Declaration(Decl *enclosing_decl, std::string name):
+			Decl(dk_type, enclosing_decl, name)
+		{ }
+};
 
 class Variable_Declaration: public Decl {
 		Type_Declaration *type_;

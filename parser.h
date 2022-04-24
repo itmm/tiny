@@ -5,17 +5,13 @@
 #include "lexer.h"
 #include "sema.h"
 
-#include "llvm/Support/raw_ostream.h"
-
-using namespace std::literals::string_literals;
-
 class Parser {
 		Lexer &lexer_;
 		Sema &actions_;
 		Token tok_;
 
 		void error() {
-			throw Error { "Unexpected: '" + (std::string) tok_.raw() + "'\n" };
+			throw Error { "Unexpected: '" + tok_.raw() + "'\n" };
 		}
 
 		void advance() { lexer_.next(tok_); }
@@ -28,15 +24,25 @@ class Parser {
 			expect(k); advance();
 		}
 
-		Expr *parse_expr();
+		Expr *parse_expression();
+		Expr *parse_simple_expression();
 		Expr *parse_term();
 		Expr *parse_factor();
+		void parse_designator();
+		void parse_statement();
 		void parse_statement_sequence();
 		void parse_if();
 
 		void parse_ident_list(Ident_List &ids);
-		void parse_qual_ident(Decl *decl);
+		Decl *parse_qual_ident();
 		void parse_variable_declaration(Decl_List &decls);
+		void parse_formal_type();
+		void parse_fp_section();
+		void parse_formal_parameters();
+		std::string parse_procedure_heading();
+		void parse_procedure_body();
+		void parse_procedure_declaration();
+		void parse_declaration_sequence();
 		void parse_module();
 
 	public:

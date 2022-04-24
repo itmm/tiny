@@ -1,6 +1,6 @@
 MODULE Gcd;
 	PROCEDURE GCD(a, b: INTEGER): INTEGER;
-		VAR t: INTEGER:
+		VAR t: INTEGER;
 		BEGIN
 			WHILE b # 0 DO
 				t := a MOD b;
