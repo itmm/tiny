@@ -44,9 +44,13 @@ class Token {
 class Lexer {
 		std::istream &in_;
 		int ch_;
+		static int line_;
 	public:
-		Lexer(std::istream &in): in_ { in }, ch_ { in_.get() } { }
+		Lexer(std::istream &in): in_ { in }, ch_ { in_.get() } { ++line_; }
 		void next(Token &tok);
+
+		static int current_line() { return line_; };
+		static void reset_current_line() { line_ = 0; };
 	private:
 		void set_token(Token &tok, std::string raw, Token_Kind kind);
 		void set_token(Token &tok, char raw, Token_Kind kind);

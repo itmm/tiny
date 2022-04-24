@@ -43,7 +43,10 @@ namespace Char_Info {
 }
 
 void Lexer::next(Token &tok) {
-	while (Char_Info::is_whitespace(ch_)) { ch_ = in_.get(); }
+	while (Char_Info::is_whitespace(ch_)) {
+		if (ch_ == '\n') { ++line_; }
+		ch_ = in_.get();
+	}
 	if (ch_ == EOF) { tok.kind_ = Token_Kind::eoi; return; }
 	if (Char_Info::is_letter(ch_)) {
 		std::string name;
@@ -86,6 +89,8 @@ void Lexer::next(Token &tok) {
 
 	}
 }
+
+int Lexer::line_ { 0 };
 
 void Lexer::set_token(Token &tok, std::string raw, Token_Kind kind) {
 	tok.kind_ = kind;
