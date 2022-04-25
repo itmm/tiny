@@ -6,52 +6,52 @@ void Parser::parse() {
 	expect(Token_Kind::eoi);
 }
 
-Expr *Parser::parse_simple_expression() {
-	Expr *left { parse_term() };
+std::shared_ptr<Expr> Parser::parse_simple_expression() {
+	auto left { parse_term() };
 	while (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
 		Binary_Op::Operator op {
 			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
 		};
 		advance();
-		Expr *right { parse_term() };
-		left = new Binary_Op { op, left, right };
+		auto right { parse_term() };
+		left = Binary_Op::create(op, left, right);
 	}
 	return left;
 }
 
-Expr *Parser::parse_expression() {
-	Expr *left { parse_simple_expression() };
+std::shared_ptr<Expr> Parser::parse_expression() {
+	auto left { parse_simple_expression() };
 	while (tok_.is(Token_Kind::not_equal)) {
 		Binary_Op::Operator op { Binary_Op::not_equal };
 		advance();
-		Expr * right { parse_simple_expression() };
-		left = new Binary_Op { op, left, right };
+		auto right { parse_simple_expression() };
+		left = Binary_Op::create(op, left, right);
 	}
 	return left;
 }
 
-Expr *Parser::parse_term() {
-	Expr *left { parse_factor() };
+std::shared_ptr<Expr> Parser::parse_term() {
+	auto left { parse_factor() };
 	while (tok_.is_one_of(Token_Kind::star, Token_Kind::slash, Token_Kind::kw_MOD)) {
 		Binary_Op::Operator op {
 			tok_.is(Token_Kind::star) ? Binary_Op::mul :
 			tok_.is(Token_Kind::kw_MOD) ? Binary_Op::mod : Binary_Op::div
 		};
 		advance();
-		Expr *right { parse_factor() };
-		left = new Binary_Op { op, left, right };
+		auto right { parse_factor() };
+		left = Binary_Op::create(op, left, right);
 	}
 	return left;
 }
 
-Expr *Parser::parse_factor() {
-	Expr *res { nullptr };
+std::shared_ptr<Expr> Parser::parse_factor() {
+	std::shared_ptr<Expr> res;
 	switch(tok_.kind()) {
 		case Token_Kind::integer_literal:
-			res = new Factor { Factor::number, tok_.literal_data() };
+			res = Factor::create(Factor::number, tok_.literal_data());
 			advance(); break;
 		case Token_Kind::identifier:
-			res = new Factor { Factor::ident, tok_.identifier() };
+			res = Factor::create(Factor::ident, tok_.identifier());
 			advance(); break;
 		case Token_Kind::l_paren:
 			advance();
@@ -125,7 +125,7 @@ void Parser::parse_ident_list(Ident_List &ids) {
 	}
 }
 
-Declaration *Parser::parse_qual_ident() {
+std::shared_ptr<Declaration> Parser::parse_qual_ident() {
 	expect(Token_Kind::identifier);
 	auto got { current_scope->lookup(tok_.identifier()) };
 	if (! got) {
@@ -139,18 +139,18 @@ void Parser::parse_variable_declaration(Decl_List &decls) {
 	Ident_List ids;
 	parse_ident_list(ids);
 	consume(Token_Kind::colon);
-	Declaration *d { parse_qual_ident() };
-	auto t { dynamic_cast<Type_Declaration *>(d) };
+	auto d { parse_qual_ident() };
+	auto t { dynamic_cast<Type_Declaration *>(d.get()) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	for (auto &n : ids) {
-		auto dcl { new Variable_Declaration { parent_declaration, n, t } };
+		auto dcl = Variable_Declaration::create(parent_declaration, n, std::dynamic_pointer_cast<Type_Declaration>(d));
 		current_scope->insert(dcl);
 		decls.push_back(dcl);
 	}
-	actions_.act_on_variable_declaration(decls, ids, d);
+	actions_.act_on_variable_declaration(decls, ids, d.get());
 }
 
-Declaration *Parser::parse_formal_type() {
+std::shared_ptr<Declaration> Parser::parse_formal_type() {
 	if (tok_.is(Token_Kind::kw_ARRAY)) {
 		advance();
 		consume(Token_Kind::kw_OF);
@@ -172,10 +172,10 @@ void Parser::parse_fp_section() {
 	}
 	consume(Token_Kind::colon);
 	auto got { parse_formal_type() };
-	auto t { dynamic_cast<Type_Declaration *>(got) };
+	auto t { dynamic_cast<Type_Declaration *>(got.get()) };
 	if (! t) { throw Error { got->name() + " is no type" }; }
 	for (auto &n : ids) {
-		auto dcl { new Variable_Declaration { parent_declaration, n, t } };
+		auto dcl = Variable_Declaration::create(parent_declaration, n, std::dynamic_pointer_cast<Type_Declaration>(got));
 		current_scope->insert(dcl);
 	}
 }
@@ -219,7 +219,7 @@ void Parser::parse_procedure_body() {
 
 void Parser::parse_procedure_declaration() {
 	auto name { parse_procedure_heading() };
-	auto p { new Procedure_Declaration { parent_declaration, name } };
+	auto p { std::make_shared<Procedure_Declaration>(parent_declaration, name) };
 	Pushed_Scope pushed { p };
 	if (tok_.is(Token_Kind::l_paren)) {
 		parse_formal_parameters();
@@ -254,10 +254,10 @@ void Parser::parse_declaration_sequence() {
 	}
 }
 
-Module_Declaration *Parser::parse_module() {
+std::shared_ptr<Module_Declaration> Parser::parse_module() {
 	consume(Token_Kind::kw_MODULE);
 	expect(Token_Kind::identifier);
-	auto mod = new Module_Declaration { nullptr, tok_.identifier() };
+	auto mod = std::make_shared<Module_Declaration>(nullptr, tok_.identifier());
 	current_scope->insert(mod);
 	Pushed_Scope pushed { mod };
 

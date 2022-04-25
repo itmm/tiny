@@ -39,26 +39,6 @@ namespace {
 				builder_.CreateRet(int32_zero_);
 			}
 
-			void visit(With_Decl &node) override {
-				llvm::FunctionType *read_fty = llvm::FunctionType::get(int32_ty_, { int8ptr_ty_ }, false);
-				llvm::Function *read_f = llvm::Function::Create(read_fty, llvm::GlobalValue::ExternalLinkage, "calc_read", mod_);
-				for (auto i { node.begin() }, e { node.end() }; i != e; ++i) {
-					llvm::StringRef var = *i;
-					llvm::Constant *text = llvm::ConstantDataArray::getString(mod_->getContext(), var);
-					llvm::GlobalVariable *str = new llvm::GlobalVariable(
-						*mod_, text->getType(), /*isConstant=*/true,
-						llvm::GlobalValue::PrivateLinkage, text,
-						llvm::Twine(var).concat(".str")
-					);
-					llvm::Value *ptr = builder_.CreateInBoundsGEP(
-						str, { int32_zero_, int32_zero_ }, "ptr"
-					);
-					llvm::CallInst *call = builder_.CreateCall(read_fty, read_f, { ptr });
-					name_map_[var] = call;
-				}
-				node.expr()->accept(*this);
-			}
-
 			void visit(Factor &node) override {
 				if (node.kind() == Factor::ident) {
 					value_ = name_map_[node.value()];
