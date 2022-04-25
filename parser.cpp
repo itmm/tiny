@@ -219,7 +219,7 @@ void Parser::parse_procedure_body() {
 
 void Parser::parse_procedure_declaration() {
 	auto name { parse_procedure_heading() };
-	auto p { std::make_shared<Procedure_Declaration>(parent_declaration, name) };
+	auto p { Procedure_Declaration::create(parent_declaration, name) };
 	Pushed_Scope pushed { p };
 	if (tok_.is(Token_Kind::l_paren)) {
 		parse_formal_parameters();
@@ -257,7 +257,7 @@ void Parser::parse_declaration_sequence() {
 std::shared_ptr<Module_Declaration> Parser::parse_module() {
 	consume(Token_Kind::kw_MODULE);
 	expect(Token_Kind::identifier);
-	auto mod = std::make_shared<Module_Declaration>(nullptr, tok_.identifier());
+	auto mod = Module_Declaration::create(nullptr, tok_.identifier());
 	current_scope->insert(mod);
 	Pushed_Scope pushed { mod };
 

@@ -88,6 +88,11 @@ class Module_Declaration: public Declaration {
 		Module_Declaration(std::shared_ptr<Declaration> enclosing_declaration, std::string name):
 			Declaration(enclosing_declaration, name)
 		{ }
+		static std::shared_ptr<Module_Declaration> create(
+			std::shared_ptr<Declaration> enclosing_declaration, std::string name
+		) {
+			return std::make_shared<Module_Declaration>(enclosing_declaration, name);
+		}
 };
 
 class Procedure_Declaration: public Declaration {
@@ -95,6 +100,11 @@ class Procedure_Declaration: public Declaration {
 		Procedure_Declaration(std::shared_ptr<Declaration> enclosing_declaration, std::string name):
 			Declaration(enclosing_declaration, name)
 		{ }
+		static std::shared_ptr<Procedure_Declaration> create(
+			std::shared_ptr<Declaration> enclosing_declaration, std::string name
+		) {
+			return std::make_shared<Procedure_Declaration>(enclosing_declaration, name);
+		}
 };
 
 class Type_Declaration: public Declaration {
@@ -102,10 +112,15 @@ class Type_Declaration: public Declaration {
 		Type_Declaration(std::shared_ptr<Declaration> enclosing_declaration, std::string name):
 			Declaration(enclosing_declaration, name)
 		{ }
+		static std::shared_ptr<Type_Declaration> create(
+			std::shared_ptr<Declaration> enclosing_declaration, std::string name
+		) {
+			return std::make_shared<Type_Declaration>(enclosing_declaration, name);
+		}
 };
 
 class Variable_Declaration: public Declaration {
-	std::shared_ptr<Type_Declaration> type_;
+		std::shared_ptr<Type_Declaration> type_;
 	public:
 		Variable_Declaration(
 			std::shared_ptr<Declaration> enclosing_declaration, std::string name,

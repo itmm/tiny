@@ -7,8 +7,8 @@ std::shared_ptr<Declaration> parent_declaration = nullptr;
 class Initial_Scope: public Scope {
 	public:
 		Initial_Scope(): Scope { nullptr } {
-			insert(std::make_shared<Type_Declaration>(nullptr, "INTEGER"));
-			insert(std::make_shared<Type_Declaration>(nullptr, "BOOL"));
+			insert(Type_Declaration::create(nullptr, "INTEGER"));
+			insert(Type_Declaration::create(nullptr, "BOOL"));
 		}
 };
 
