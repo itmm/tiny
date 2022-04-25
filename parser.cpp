@@ -64,16 +64,14 @@ Expr *Parser::parse_factor() {
 }
 
 void Parser::parse_designator() {
-	//parse_qual_ident();
-	consume(Token_Kind::identifier);
+	parse_qual_ident();
 	// TODO: selectors
 }
 
 void Parser::parse_statement() {
-	// Procedure Call
-	// if statement
-	// case statement
-	// while statement
+	// TODO: Procedure Call
+	// TODO: if statement
+	// TODO: case statement
 	if (tok_.is(Token_Kind::kw_WHILE)) {
 		advance();
 		parse_expression();
@@ -83,8 +81,8 @@ void Parser::parse_statement() {
 		return;
 	}
 
-	// repeat statement
-	// for statement
+	// TODO: repeat statement
+	// TODO: for statement
 
 	if (! tok_.is(Token_Kind::identifier)) { return; }
 
@@ -142,28 +140,44 @@ void Parser::parse_variable_declaration(Decl_List &decls) {
 	parse_ident_list(ids);
 	consume(Token_Kind::colon);
 	Declaration *d { parse_qual_ident() };
+	auto t { dynamic_cast<Type_Declaration *>(d) };
+	if (! t) { throw Error { d->name() + " is no type" }; }
+	for (auto &n : ids) {
+		auto dcl { new Variable_Declaration { parent_declaration, n, t } };
+		current_scope->insert(dcl);
+		decls.push_back(dcl);
+	}
 	actions_.act_on_variable_declaration(decls, ids, d);
 }
 
-void Parser::parse_formal_type() {
+Declaration *Parser::parse_formal_type() {
 	if (tok_.is(Token_Kind::kw_ARRAY)) {
 		advance();
 		consume(Token_Kind::kw_OF);
 	}
-	parse_qual_ident();
+	return parse_qual_ident();
 }
 
 void Parser::parse_fp_section() {
 	if (tok_.is(Token_Kind::kw_VAR)) { advance(); }
+	Ident_List ids;
 	expect(Token_Kind::identifier);
+	ids.push_back(tok_.identifier());
 	advance();
 	while (tok_.is(Token_Kind::comma)) {
 		advance();
 		expect(Token_Kind::identifier);
+		ids.push_back(tok_.identifier());
 		advance();
 	}
 	consume(Token_Kind::colon);
-	parse_formal_type();
+	auto got { parse_formal_type() };
+	auto t { dynamic_cast<Type_Declaration *>(got) };
+	if (! t) { throw Error { got->name() + " is no type" }; }
+	for (auto &n : ids) {
+		auto dcl { new Variable_Declaration { parent_declaration, n, t } };
+		current_scope->insert(dcl);
+	}
 }
 
 void Parser::parse_formal_parameters() {
@@ -187,9 +201,6 @@ std::string Parser::parse_procedure_heading() {
 	expect(Token_Kind::identifier);
 	auto name { tok_.identifier() };
 	advance();
-	if (tok_.is(Token_Kind::l_paren)) {
-		parse_formal_parameters();
-	}
 	return name;
 }
 
@@ -210,6 +221,9 @@ void Parser::parse_procedure_declaration() {
 	auto name { parse_procedure_heading() };
 	auto p { new Procedure_Declaration { parent_declaration, name } };
 	Pushed_Scope pushed { p };
+	if (tok_.is(Token_Kind::l_paren)) {
+		parse_formal_parameters();
+	}
 	consume(Token_Kind::semicolon);
 	parse_procedure_body();
 	expect(Token_Kind::identifier);

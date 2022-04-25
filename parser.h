@@ -36,7 +36,7 @@ class Parser {
 		void parse_ident_list(Ident_List &ids);
 		Declaration *parse_qual_ident();
 		void parse_variable_declaration(Decl_List &decls);
-		void parse_formal_type();
+		Declaration *parse_formal_type();
 		void parse_fp_section();
 		void parse_formal_parameters();
 		std::string parse_procedure_heading();
