@@ -6,7 +6,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace {
-	class To_IR_Visitor: public AST_Visitor {
+	class To_IR_Visitor {
 			llvm::Module *mod_;
 			llvm::IRBuilder<> builder_;
 			llvm::Type *void_ty_;
@@ -32,14 +32,14 @@ namespace {
 				llvm::Function *main_f = llvm::Function::Create(main_fty, llvm::GlobalValue::ExternalLinkage, "main", mod_);
 				llvm::BasicBlock *bb = llvm::BasicBlock::Create(mod_->getContext(), "entry", main_f);
 				builder_.SetInsertPoint(bb);
-				tree->accept(*this);
+				// tree->accept(*this);
 				llvm::FunctionType *calc_write_fty = llvm::FunctionType::get(void_ty_, { int32_ty_ }, false);
 				llvm::Function *calc_write_f = llvm::Function::Create(calc_write_fty, llvm::GlobalValue::ExternalLinkage, "calc_write", mod_);
 				builder_.CreateCall(calc_write_fty, calc_write_f, { value_ });
 				builder_.CreateRet(int32_zero_);
 			}
 
-			void visit(Factor &node) override {
+			void visit(Factor &node) {
 				if (node.kind() == Factor::ident) {
 					value_ = name_map_[node.value()];
 				} else {
@@ -48,10 +48,10 @@ namespace {
 				}
 			}
 
-			void visit(Binary_Op &node) override {
-				node.left()->accept(*this);
+			void visit(Binary_Op &node) {
+				//node.left()->accept(*this);
 				llvm::Value *left = value_;
-				node.right()->accept(*this);
+				//node.right()->accept(*this);
 				llvm::Value *right = value_;
 				switch (node.op()) {
 					case Binary_Op::plus:
