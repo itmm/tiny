@@ -1,7 +1,5 @@
-#include "code-gen.h"
 #include "err.h"
 #include "parser.h"
-#include "sema.h"
 
 #include <fstream>
 #include <iostream>
@@ -23,8 +21,7 @@ int main(int argc, const char **argv) {
 			std::ifstream in { *cur };
 			if (! in) { throw Error { "cannot open for reading" }; }
 			Lexer lexer { in };
-			Sema sema;
-			Parser parser { lexer, sema };
+			Parser parser { lexer };
 			parser.parse();
 		}
 	} catch (const Error &e) {

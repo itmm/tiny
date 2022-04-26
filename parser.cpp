@@ -119,7 +119,9 @@ void Parser::parse_if() {
 	consume(Token_Kind::kw_END);
 };
 
-void Parser::parse_ident_list(Ident_List &ids) {
+std::vector<std::string> Parser::parse_ident_list() {
+	std::vector<std::string> ids;
+
 	expect(Token_Kind::identifier);
 	ids.push_back(tok_.identifier());
 	advance();
@@ -129,31 +131,31 @@ void Parser::parse_ident_list(Ident_List &ids) {
 		ids.push_back(tok_.identifier());
 		advance();
 	}
+	return ids;
 }
 
 std::shared_ptr<Declaration> Parser::parse_qual_ident() {
 	expect(Token_Kind::identifier);
 	auto got { current_scope->lookup(tok_.identifier()) };
 	if (! got) {
-		throw Error { "unknown identifier '" + tok_.identifier() + "'" };
+		throw Error {
+			"unknown identifier '" + tok_.identifier() + "'"
+		};
 	}
 	advance();
 	return got;
 }
 
-void Parser::parse_variable_declaration(Decl_List &decls) {
-	Ident_List ids;
-	parse_ident_list(ids);
+void Parser::parse_variable_declaration() {
+	auto ids { parse_ident_list() };
 	consume(Token_Kind::colon);
 	auto d { parse_qual_ident() };
-	auto t { dynamic_cast<Type_Declaration *>(d.get()) };
+	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(n, std::dynamic_pointer_cast<Type_Declaration>(d));
+		auto dcl = Variable_Declaration::create(n, t);
 		current_scope->insert(dcl);
-		decls.push_back(dcl);
 	}
-	actions_.act_on_variable_declaration(decls, ids, d.get());
 }
 
 std::shared_ptr<Declaration> Parser::parse_formal_type() {
@@ -166,24 +168,7 @@ std::shared_ptr<Declaration> Parser::parse_formal_type() {
 
 void Parser::parse_fp_section() {
 	if (tok_.is(Token_Kind::kw_VAR)) { advance(); }
-	Ident_List ids;
-	expect(Token_Kind::identifier);
-	ids.push_back(tok_.identifier());
-	advance();
-	while (tok_.is(Token_Kind::comma)) {
-		advance();
-		expect(Token_Kind::identifier);
-		ids.push_back(tok_.identifier());
-		advance();
-	}
-	consume(Token_Kind::colon);
-	auto got { parse_formal_type() };
-	auto t { dynamic_cast<Type_Declaration *>(got.get()) };
-	if (! t) { throw Error { got->name() + " is no type" }; }
-	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(n, std::dynamic_pointer_cast<Type_Declaration>(got));
-		current_scope->insert(dcl);
-	}
+	parse_variable_declaration();
 }
 
 void Parser::parse_formal_parameters() {
@@ -234,7 +219,10 @@ void Parser::parse_procedure_declaration() {
 	parse_procedure_body();
 	expect(Token_Kind::identifier);
 	if (name != tok_.identifier()) {
-		throw Error { "PROCEDURE '" + name + "' ends with name '" + tok_.identifier() + "'" };
+		throw Error {
+			"PROCEDURE '" + name + "' ends with name '" +
+			tok_.identifier() + "'"
+		};
 	}
 	advance();
 }
@@ -248,9 +236,11 @@ void Parser::parse_declaration_sequence() {
 	}
 	if (tok_.is(Token_Kind::kw_VAR)) {
 		advance();
-		while (! tok_.is_one_of(Token_Kind::eoi, Token_Kind::kw_END, Token_Kind::kw_BEGIN, Token_Kind::kw_PROCEDURE)) {
-			Decl_List l;
-			parse_variable_declaration(l);
+		while (! tok_.is_one_of(
+			Token_Kind::eoi, Token_Kind::kw_END,
+			Token_Kind::kw_BEGIN, Token_Kind::kw_PROCEDURE
+		)) {
+			parse_variable_declaration();
 			consume(Token_Kind::semicolon);
 		}
 	}
@@ -283,8 +273,10 @@ std::shared_ptr<Module_Declaration> Parser::parse_module() {
 	consume(Token_Kind::kw_END);
 	expect(Token_Kind::identifier);
 	if (tok_.identifier() != mod->name()) {
-		throw Error { "MODULE '" + mod->name() + "' ends in name '" +
-			tok_.identifier() + "'" };
+		throw Error {
+			"MODULE '" + mod->name() + "' ends in name '" +
+			tok_.identifier() + "'" 
+		};
 	}
 	advance();
 	consume(Token_Kind::period);

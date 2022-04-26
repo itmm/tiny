@@ -3,11 +3,9 @@
 #include "ast.h"
 #include "err.h"
 #include "lexer.h"
-#include "sema.h"
 
 class Parser {
 		Lexer &lexer_;
-		Sema &actions_;
 		Token tok_;
 
 		void error() {
@@ -33,9 +31,9 @@ class Parser {
 		void parse_statement_sequence();
 		void parse_if();
 
-		void parse_ident_list(Ident_List &ids);
+		std::vector<std::string> parse_ident_list();
 		std::shared_ptr<Declaration> parse_qual_ident();
-		void parse_variable_declaration(Decl_List &decls);
+		void parse_variable_declaration();
 		std::shared_ptr<Declaration> parse_formal_type();
 		void parse_fp_section();
 		void parse_formal_parameters();
@@ -46,11 +44,7 @@ class Parser {
 		std::shared_ptr<Module_Declaration> parse_module();
 
 	public:
-		Parser(Lexer &lexer, Sema &actions):
-			lexer_ { lexer }, actions_ { actions }
-		{
-			advance();
-	       	}
+		Parser(Lexer &lexer): lexer_ { lexer } { advance(); }
 
 		void parse();
 };

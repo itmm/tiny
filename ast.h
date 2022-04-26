@@ -61,15 +61,12 @@ class Declaration: public Expression {
 
 	protected:
 		Declaration(std::string name): name_ { name } { }
+
 	public:
 		using Ptr = std::shared_ptr<Declaration>;
-		virtual ~Declaration() { }
 
 		const std::string &name() const { return name_; }
 };
-
-using Decl_List = std::vector<Declaration::Ptr>;
-using Ident_List = std::vector<std::string>;
 
 class Module_Declaration: public Declaration {
 		Module_Declaration(std::string name): Declaration(name) { }

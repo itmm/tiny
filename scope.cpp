@@ -3,8 +3,6 @@
 #include "ast.h"
 #include "err.h"
 
-Declaration::Ptr parent_declaration = nullptr;
-
 class Initial_Scope: public Scope {
 	public:
 		Initial_Scope(): Scope { nullptr } {

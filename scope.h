@@ -21,21 +21,16 @@ class Scope {
 		Declaration::Ptr lookup(std::string name);
 };
 
-extern Declaration::Ptr parent_declaration;
 extern Scope::Ptr current_scope;
 
 class Pushed_Scope {
-		Declaration::Ptr old_parent_declaration_;
 		Scope::Ptr old_current_scope_;
 	public:
 		Pushed_Scope(Declaration::Ptr parent) {
-			old_parent_declaration_ = parent_declaration;
 			old_current_scope_ = current_scope;
-			parent_declaration = parent;
 			current_scope = Scope::create(old_current_scope_);
 		}
 		~Pushed_Scope() {
 			current_scope = old_current_scope_;
-			parent_declaration = old_parent_declaration_;
 		}
 };
