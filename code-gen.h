@@ -4,6 +4,5 @@
 
 class Code_Gen {
 	public:
-		void compile(AST *tree);
 };
 

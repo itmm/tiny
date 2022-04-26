@@ -27,6 +27,7 @@ namespace {
 				int32_zero_ = llvm::ConstantInt::get(int32_ty_, 0, true);
 			}
 
+			/*
 			void run(AST *tree) {
 				llvm::FunctionType *main_fty = llvm::FunctionType::get(int32_ty_, { int32_ty_, int8ptrptr_ty_ }, false);
 				llvm::Function *main_f = llvm::Function::Create(main_fty, llvm::GlobalValue::ExternalLinkage, "main", mod_);
@@ -38,7 +39,9 @@ namespace {
 				builder_.CreateCall(calc_write_fty, calc_write_f, { value_ });
 				builder_.CreateRet(int32_zero_);
 			}
+			*/
 
+			/*
 			void visit(Factor &node) {
 				if (node.kind() == Factor::ident) {
 					value_ = name_map_[node.value()];
@@ -47,6 +50,7 @@ namespace {
 					value_ = llvm::ConstantInt::get(int32_ty_, int_val, true);
 				}
 			}
+			*/
 
 			void visit(Binary_Op &node) {
 				//node.left()->accept(*this);
@@ -74,6 +78,7 @@ namespace {
 	};
 }
 
+/*
 void Code_Gen::compile(AST *tree) {
 	llvm::LLVMContext ctx;
 	llvm::Module *mod = new llvm::Module("calc.expr", ctx);
@@ -81,4 +86,4 @@ void Code_Gen::compile(AST *tree) {
 	visitor.run(tree);
 	mod->print(llvm::outs(), nullptr);
 }
-
+*/

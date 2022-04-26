@@ -1,31 +1,34 @@
 #pragma once
 
+#include "ast.h"
+
 #include <map>
 #include <memory>
 #include <string>
 
-class Declaration;
-
 class Scope {
-		std::shared_ptr<Scope> parent_;
-		std::map<std::string, std::shared_ptr<Declaration>> symbols_;
 	public:
-		Scope(std::shared_ptr<Scope> parent): parent_ { parent } { }
-		static std::shared_ptr<Scope> create(std::shared_ptr<Scope> parent) {
-			return std::make_shared<Scope>(parent);
+		using Ptr = std::shared_ptr<Scope>;
+	private:
+		Scope::Ptr parent_;
+		std::map<std::string, Declaration::Ptr> symbols_;
+	public:
+		Scope(Scope::Ptr parent): parent_ { parent } { }
+		static auto create(Scope::Ptr parent) {
+			return Ptr { new Scope { parent } };
 		}
-		bool insert(std::shared_ptr<Declaration> declaration);
-		std::shared_ptr<Declaration> lookup(std::string name);
+		bool insert(Declaration::Ptr declaration);
+		Declaration::Ptr lookup(std::string name);
 };
 
-extern std::shared_ptr<Declaration> parent_declaration;
-extern std::shared_ptr<Scope> current_scope;
+extern Declaration::Ptr parent_declaration;
+extern Scope::Ptr current_scope;
 
 class Pushed_Scope {
-		std::shared_ptr<Declaration> old_parent_declaration_;
-		std::shared_ptr<Scope> old_current_scope_;
+		Declaration::Ptr old_parent_declaration_;
+		Scope::Ptr old_current_scope_;
 	public:
-		Pushed_Scope(std::shared_ptr<Declaration> parent) {
+		Pushed_Scope(Declaration::Ptr parent) {
 			old_parent_declaration_ = parent_declaration;
 			old_current_scope_ = current_scope;
 			parent_declaration = parent;

@@ -11,8 +11,8 @@ enum class Token_Kind {
 	plus, minus, star, slash, l_paren, r_paren,
 	integer_literal, string_literal, period,
 	less, less_equal, not_equal, kw_ARRAY,
-	kw_BEGIN, kw_CONST, kw_DO, kw_ELSE, kw_ELSIF, kw_END, kw_IF, kw_IMPORT, kw_MOD,
-	kw_MODULE, kw_OF, kw_PROCEDURE, kw_RETURN, kw_THEN, kw_TYPE, kw_VAR, kw_WHILE, kw_WITH,
+	kw_BEGIN, kw_CONST, kw_DO, kw_ELSE, kw_ELSIF, kw_END, kw_FALSE, kw_IF, kw_IMPORT, kw_MOD,
+	kw_MODULE, kw_OF, kw_PROCEDURE, kw_RETURN, kw_THEN, kw_TRUE, kw_TYPE, kw_VAR, kw_WHILE, kw_WITH,
 };
 
 class Token {

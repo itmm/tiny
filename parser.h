@@ -24,10 +24,10 @@ class Parser {
 			expect(k); advance();
 		}
 
-		std::shared_ptr<Expr> parse_expression();
-		std::shared_ptr<Expr> parse_simple_expression();
-		std::shared_ptr<Expr> parse_term();
-		std::shared_ptr<Expr> parse_factor();
+		std::shared_ptr<Expression> parse_expression();
+		std::shared_ptr<Expression> parse_simple_expression();
+		std::shared_ptr<Expression> parse_term();
+		std::shared_ptr<Expression> parse_factor();
 		void parse_designator();
 		void parse_statement();
 		void parse_statement_sequence();

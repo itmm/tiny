@@ -1,24 +1,26 @@
 #include "scope.h"
 
 #include "ast.h"
+#include "err.h"
 
-std::shared_ptr<Declaration> parent_declaration = nullptr;
+Declaration::Ptr parent_declaration = nullptr;
 
 class Initial_Scope: public Scope {
 	public:
 		Initial_Scope(): Scope { nullptr } {
-			insert(Type_Declaration::create(nullptr, "INTEGER"));
-			insert(Type_Declaration::create(nullptr, "BOOL"));
+			insert(Type_Declaration::create("INTEGER"));
+			insert(Type_Declaration::create("BOOL"));
 		}
 };
 
-std::shared_ptr<Scope> current_scope = std::make_shared<Initial_Scope>();
+Scope::Ptr current_scope = std::make_shared<Initial_Scope>();
 
-bool Scope::insert(std::shared_ptr<Declaration> declaration) {
+bool Scope::insert(Declaration::Ptr declaration) {
+	if (! declaration) { throw Error { "insert nullptr" }; return false; }
 	return symbols_.insert({ declaration->name(), declaration }).second;
 }
 
-std::shared_ptr<Declaration> Scope::lookup(std::string name) {
+Declaration::Ptr Scope::lookup(std::string name) {
 	for (auto cur { current_scope }; cur; cur = cur->parent_) {
 		auto got { cur->symbols_.find(name) };
 		if (got != cur->symbols_.end()) { return got->second; }

@@ -4,142 +4,114 @@
 #include <memory>
 #include <vector>
 
-class AST {
+class Expression {
 	public:
-		virtual ~AST() { }
+		using Ptr = std::shared_ptr<Expression>;
+		virtual ~Expression() { }
 };
 
-class Expr: public AST { };
+class Literal: public Expression { };
 
-class Factor: public Expr {
+class Bool_Literal: public Literal {
+		bool value_;
+		Bool_Literal(bool value): value_ { value } { }
 	public:
-		enum Kind { ident, number };
-	private:
-		Kind kind_;
-		std::string value_;
-	public:
-		Factor(Kind kind, std::string value):
-		       	kind_ { kind }, value_ { value }
-	      	{ }
-		static auto create(Kind kind, std::string value) {
-			return std::make_shared<Factor>(kind, value);
+		using Ptr = std::shared_ptr<Bool_Literal>;
+		static auto create(bool value) {
+			return Ptr { new Bool_Literal { value } };
 		}
-		Kind kind() const { return kind_; }
-		std::string value() const { return value_; }
-			
 };
 
-class Binary_Op: public Expr {
+class Integer_Literal: public Literal {
+		int value_;
+		Integer_Literal(int value): value_ { value } { }
+	public:
+		using Ptr = std::shared_ptr<Integer_Literal>;
+		static auto create(int value) {
+			return Ptr { new Integer_Literal { value } };
+		}
+};
+
+class Binary_Op: public Expression {
 	public:
 		enum Operator { plus, minus, mul, div, not_equal, mod };
 	private:
-		std::shared_ptr<Expr> left_;
-		std::shared_ptr<Expr> right_;
+		Expression::Ptr left_;
+		Expression::Ptr right_;
 		Operator op_;
-	public:
 		Binary_Op(
-			Operator op, std::shared_ptr<Expr> left,
-			std::shared_ptr<Expr> right
+			Operator op, Expression::Ptr left, Expression::Ptr right
 		):
 			left_ { left }, right_ { right }, op_ { op }
 		{ }
+	public:
+		using Ptr = std::shared_ptr<Binary_Op>;
 		static auto create(
-			Operator op, std::shared_ptr<Expr> left,
-			std::shared_ptr<Expr> right
+			Operator op, Expression::Ptr left, Expression::Ptr right
 		) {
-			return std::make_shared<Binary_Op>(op, left, right);
+			return Ptr { new Binary_Op { op, left, right } };
 		}
 		auto left() const { return left_; }
 		auto right() const { return right_; }
 		Operator op() const { return op_; }
 };
 
-class Declaration {
-		std::shared_ptr<Declaration> enclosing_declaration_;
+class Declaration: public Expression {
 		const std::string name_;
 
 	protected:
-		Declaration(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		):
-			enclosing_declaration_ { enclosing_declaration },
-			name_ { name }
-		{ }
+		Declaration(std::string name): name_ { name } { }
 	public:
+		using Ptr = std::shared_ptr<Declaration>;
 		virtual ~Declaration() { }
 
 		const std::string &name() const { return name_; }
-		auto enclosing_decl() const { return enclosing_declaration_; }
 };
 
-using Decl_List = std::vector<std::shared_ptr<Declaration>>;
+using Decl_List = std::vector<Declaration::Ptr>;
 using Ident_List = std::vector<std::string>;
 
 class Module_Declaration: public Declaration {
+		Module_Declaration(std::string name): Declaration(name) { }
 	public:
-		Module_Declaration(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		): Declaration(enclosing_declaration, name) { }
-		static auto create(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		) {
-			return std::make_shared<Module_Declaration>(
-				enclosing_declaration, name
-			);
+		using Ptr = std::shared_ptr<Module_Declaration>;
+		static auto create(std::string name) {
+			return Ptr { new Module_Declaration { name } };
 		}
 };
 
 class Procedure_Declaration: public Declaration {
+		Procedure_Declaration(std::string name): Declaration(name) { }
 	public:
-		Procedure_Declaration(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		): Declaration(enclosing_declaration, name) { }
-		static auto create(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		) {
-			return std::make_shared<Procedure_Declaration>(
-				enclosing_declaration, name
-			);
+		using Ptr = std::shared_ptr<Procedure_Declaration>;
+		static auto create(std::string name) {
+
+			return Ptr { new Procedure_Declaration { name } };
 		}
 };
 
 class Type_Declaration: public Declaration {
+		Type_Declaration(std::string name): Declaration(name) { }
 	public:
-		Type_Declaration(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		): Declaration(enclosing_declaration, name) { }
-		static auto create(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name
-		) {
-			return std::make_shared<Type_Declaration>(
-				enclosing_declaration, name
-			);
+		using Ptr = std::shared_ptr<Type_Declaration>;
+		static auto create(std::string name) {
+			return Ptr { new Type_Declaration { name } };
 		}
 };
 
 class Variable_Declaration: public Declaration {
-		std::shared_ptr<Type_Declaration> type_;
-	public:
+		Type_Declaration::Ptr type_;
 		Variable_Declaration(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name, std::shared_ptr<Type_Declaration> type
+		       	std::string name, Type_Declaration::Ptr type
 		):
-			Declaration(enclosing_declaration, name), type_ { type }
+			Declaration(name), type_ { type }
 		{ }
+	public:
+		using Ptr = std::shared_ptr<Variable_Declaration>;
 		static auto create(
-			std::shared_ptr<Declaration> enclosing_declaration,
-		       	std::string name, std::shared_ptr<Type_Declaration> type
+		       	std::string name, Type_Declaration::Ptr type
 		) {
-			return std::make_shared<Variable_Declaration>(
-				enclosing_declaration, name, type
-			);
+			return Ptr { new Variable_Declaration { name, type } };
 		}
 		auto type() { return type_; }
 };
