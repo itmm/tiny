@@ -15,29 +15,57 @@ Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type) {
 	throw Error { "can't create variable from " + type->name() };
 }
 
-static Expression::Ptr literal_not_equal(
+static Expression::Ptr literal_bin_not_equal(
 	Literal::Ptr left, Literal::Ptr right
 ) {
 	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
 		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
-		if (! ir) { throw Error { "#: not both literals integers" }; }
+		if (! ir) { throw Error { "#: not both literals are integers" }; }
 		return Bool_Literal::create(il->value() != ir->value());
 	}
 
 	if (auto bl { std::dynamic_pointer_cast<Bool_Literal>(left) }) {
 		auto br { std::dynamic_pointer_cast<Bool_Literal>(right) };
-		if (! br) { throw Error { "#: not both literals boolean" }; }
+		if (! br) { throw Error { "#: not both literals are boolean" }; }
 		return Bool_Literal::create(bl->value() != br->value());
 	}
 
-	throw Error {"#: wrong literal argument types" };
+	throw Error { "#: wrong literal argument types" };
+}
+
+static Expression::Ptr literal_bin_plus(
+	Literal::Ptr left, Literal::Ptr right
+) {
+	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
+		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
+		if (! ir) { throw Error { "+: not both literals are integer" }; }
+		return Integer_Literal::create(il->value() + ir->value());
+	}
+
+	throw Error { "+: wrong literal argument types" };
+}
+
+static Expression::Ptr literal_bin_minus(
+	Literal::Ptr left, Literal::Ptr right
+) {
+	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
+		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
+		if (! ir) { throw Error { "-: not both literals are integer" }; }
+		return Integer_Literal::create(il->value() - ir->value());
+	}
+
+	throw Error { "-: wrong literal argument type" };
 }
 
 static Expression::Ptr literal_bin_op(
 	Binary_Op::Operator op, Literal::Ptr left, Literal::Ptr right
 ) {
 	if (op == Binary_Op::not_equal) {
-		return literal_not_equal(left, right);
+		return literal_bin_not_equal(left, right);
+	} else if (op == Binary_Op::plus) {
+		return literal_bin_plus(left, right);
+	} else if (op == Binary_Op::minus) {
+		return literal_bin_minus(left, right);
 	}
 	throw Error { "not implemented yet" };
 }
