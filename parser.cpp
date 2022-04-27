@@ -50,9 +50,13 @@ std::shared_ptr<Expression> Parser::parse_factor() {
 		case Token_Kind::integer_literal:
 			res = Integer_Literal::create(std::stoi(tok_.literal_data()));
 			advance(); break;
-		case Token_Kind::identifier:
-			res = std::static_pointer_cast<Expression>(parse_qual_ident());
+		case Token_Kind::identifier: {
+			auto got { parse_qual_ident() };
+			auto var { std::dynamic_pointer_cast<Variable_Declaration>(got) };
+			if (! var) { throw Error { got->name() + " is no variable" }; };
+			res = var->variable();
 			break;
+		}
 		case Token_Kind::kw_FALSE:
 			res = Bool_Literal::create(false);
 			advance(); break;
@@ -153,7 +157,7 @@ void Parser::parse_variable_declaration() {
 	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(n, t);
+		auto dcl = Variable_Declaration::create(n, t, Variable::create(n, t));
 		current_scope->insert(dcl);
 	}
 }

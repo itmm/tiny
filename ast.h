@@ -46,17 +46,15 @@ class Binary_Op: public Expression {
 		{ }
 	public:
 		using Ptr = std::shared_ptr<Binary_Op>;
-		static auto create(
+		static Expression::Ptr create(
 			Operator op, Expression::Ptr left, Expression::Ptr right
-		) {
-			return Ptr { new Binary_Op { op, left, right } };
-		}
+		);
 		auto left() const { return left_; }
 		auto right() const { return right_; }
 		Operator op() const { return op_; }
 };
 
-class Declaration: public Expression {
+class Declaration {
 		const std::string name_;
 
 	protected:
@@ -64,6 +62,7 @@ class Declaration: public Expression {
 
 	public:
 		using Ptr = std::shared_ptr<Declaration>;
+		virtual ~Declaration() { }
 
 		const std::string &name() const { return name_; }
 };
@@ -96,20 +95,63 @@ class Type_Declaration: public Declaration {
 		}
 };
 
+class Variable: public Expression {
+		std::string name_;
+	protected:
+		Variable(std::string name): name_ { name } { }
+	public:
+		using Ptr = std::shared_ptr<Variable>;
+		static Variable::Ptr create(
+			std::string name, Type_Declaration::Ptr type
+		);
+		const std::string &name() const { return name_; }
+};
+
+class Bool_Variable: public Variable {
+		bool value_;
+		Bool_Variable(std::string name): Variable { name } { }
+	public:
+		using Ptr = std::shared_ptr<Bool_Variable>;
+		static auto create(std::string name) {
+			return Ptr { new Bool_Variable { name } };
+		}
+		const bool &value() const { return value_; }
+		bool &value() { return value_; }
+};
+
+class Integer_Variable: public Variable {
+		int value_;
+		Integer_Variable(std::string name): Variable { name } { }
+	public:
+		using Ptr = std::shared_ptr<Integer_Variable>;
+		static auto create(std::string name) {
+			return Ptr { new Integer_Variable { name } };
+		}
+		const int &value() const { return value_; }
+		int &value() { return value_; }
+};
+
 class Variable_Declaration: public Declaration {
 		Type_Declaration::Ptr type_;
+		Variable::Ptr variable_;
+
 		Variable_Declaration(
-		       	std::string name, Type_Declaration::Ptr type
+		       	std::string name, Type_Declaration::Ptr type,
+			Variable::Ptr variable
 		):
-			Declaration(name), type_ { type }
+			Declaration(name), type_ { type }, variable_ { variable }
 		{ }
 	public:
 		using Ptr = std::shared_ptr<Variable_Declaration>;
 		static auto create(
-		       	std::string name, Type_Declaration::Ptr type
+		       	std::string name, Type_Declaration::Ptr type,
+			Variable::Ptr variable
 		) {
-			return Ptr { new Variable_Declaration { name, type } };
+			return Ptr { new Variable_Declaration {
+			       	name, type, variable
+		       	} };
 		}
 		auto type() { return type_; }
+		auto variable() { return variable_; }
 };
 
