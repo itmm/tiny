@@ -15,9 +15,30 @@ Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type) {
 	throw Error { "can't create variable from " + type->name() };
 }
 
+static Expression::Ptr literal_not_equal(
+	Literal::Ptr left, Literal::Ptr right
+) {
+	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
+		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
+		if (! ir) { throw Error { "#: not both literals integers" }; }
+		return Bool_Literal::create(il->value() != ir->value());
+	}
+
+	if (auto bl { std::dynamic_pointer_cast<Bool_Literal>(left) }) {
+		auto br { std::dynamic_pointer_cast<Bool_Literal>(right) };
+		if (! br) { throw Error { "#: not both literals boolean" }; }
+		return Bool_Literal::create(bl->value() != br->value());
+	}
+
+	throw Error {"#: wrong literal argument types" };
+}
+
 static Expression::Ptr literal_bin_op(
 	Binary_Op::Operator op, Literal::Ptr left, Literal::Ptr right
 ) {
+	if (op == Binary_Op::not_equal) {
+		return literal_not_equal(left, right);
+	}
 	throw Error { "not implemented yet" };
 }
 

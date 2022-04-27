@@ -49,6 +49,7 @@ class Bool_Literal: public Literal {
 		Type_Declaration::Ptr type() override {
 			return boolean_type;
 		}
+		bool value() const { return value_; }
 };
 
 class Integer_Literal: public Literal {
@@ -62,6 +63,7 @@ class Integer_Literal: public Literal {
 		Type_Declaration::Ptr type() override {
 			return integer_type;
 		}
+		int value() const { return value_; }
 };
 
 class Binary_Op: public Expression {
