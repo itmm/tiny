@@ -2,11 +2,14 @@
 
 #include "err.h"
 
+Type_Declaration::Ptr boolean_type = Type_Declaration::create("BOOLEAN");
+Type_Declaration::Ptr integer_type = Type_Declaration::create("INTEGER");
+
 Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type) {
 	if (! type) { throw Error { "no type in creation of '" + name + "'" }; }
-	if (type->name() == "INTEGER") {
+	if (type == integer_type) {
 		return Integer_Variable::create(name);
-	} else if (type->name() == "BOOLEAN") {
+	} else if (type == boolean_type) {
 		return Bool_Variable::create(name);
 	}
 	throw Error { "can't create variable from " + type->name() };
@@ -28,4 +31,12 @@ Expression::Ptr Binary_Op::create(
 	} else {
 		return Ptr { new Binary_Op { op, left, right } };
 	}
+}
+
+Type_Declaration::Ptr Binary_Op::type() {
+	if (op() == Operator::not_equal) {
+		return boolean_type;
+	}
+	return integer_type;
+
 }

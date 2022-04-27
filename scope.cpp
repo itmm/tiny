@@ -6,8 +6,8 @@
 class Initial_Scope: public Scope {
 	public:
 		Initial_Scope(): Scope { nullptr } {
-			insert(Type_Declaration::create("INTEGER"));
-			insert(Type_Declaration::create("BOOL"));
+			insert(integer_type);
+			insert(boolean_type);
 		}
 };
 

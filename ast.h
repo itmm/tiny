@@ -4,10 +4,36 @@
 #include <memory>
 #include <vector>
 
+class Declaration {
+		const std::string name_;
+
+	protected:
+		Declaration(std::string name): name_ { name } { }
+
+	public:
+		using Ptr = std::shared_ptr<Declaration>;
+		virtual ~Declaration() { }
+
+		const std::string &name() const { return name_; }
+};
+
+class Type_Declaration: public Declaration {
+		Type_Declaration(std::string name): Declaration(name) { }
+	public:
+		using Ptr = std::shared_ptr<Type_Declaration>;
+		static auto create(std::string name) {
+			return Ptr { new Type_Declaration { name } };
+		}
+};
+
+extern Type_Declaration::Ptr boolean_type;
+extern Type_Declaration::Ptr integer_type;
+
 class Expression {
 	public:
 		using Ptr = std::shared_ptr<Expression>;
 		virtual ~Expression() { }
+		virtual Type_Declaration::Ptr type() = 0;
 };
 
 class Literal: public Expression { };
@@ -20,6 +46,9 @@ class Bool_Literal: public Literal {
 		static auto create(bool value) {
 			return Ptr { new Bool_Literal { value } };
 		}
+		Type_Declaration::Ptr type() override {
+			return boolean_type;
+		}
 };
 
 class Integer_Literal: public Literal {
@@ -29,6 +58,9 @@ class Integer_Literal: public Literal {
 		using Ptr = std::shared_ptr<Integer_Literal>;
 		static auto create(int value) {
 			return Ptr { new Integer_Literal { value } };
+		}
+		Type_Declaration::Ptr type() override {
+			return integer_type;
 		}
 };
 
@@ -52,19 +84,7 @@ class Binary_Op: public Expression {
 		auto left() const { return left_; }
 		auto right() const { return right_; }
 		Operator op() const { return op_; }
-};
-
-class Declaration {
-		const std::string name_;
-
-	protected:
-		Declaration(std::string name): name_ { name } { }
-
-	public:
-		using Ptr = std::shared_ptr<Declaration>;
-		virtual ~Declaration() { }
-
-		const std::string &name() const { return name_; }
+		Type_Declaration::Ptr type() override;
 };
 
 class Module_Declaration: public Declaration {
@@ -83,15 +103,6 @@ class Procedure_Declaration: public Declaration {
 		static auto create(std::string name) {
 
 			return Ptr { new Procedure_Declaration { name } };
-		}
-};
-
-class Type_Declaration: public Declaration {
-		Type_Declaration(std::string name): Declaration(name) { }
-	public:
-		using Ptr = std::shared_ptr<Type_Declaration>;
-		static auto create(std::string name) {
-			return Ptr { new Type_Declaration { name } };
 		}
 };
 
@@ -117,6 +128,7 @@ class Bool_Variable: public Variable {
 		}
 		const bool &value() const { return value_; }
 		bool &value() { return value_; }
+		Type_Declaration::Ptr type() override { return boolean_type; }
 };
 
 class Integer_Variable: public Variable {
@@ -129,6 +141,7 @@ class Integer_Variable: public Variable {
 		}
 		const int &value() const { return value_; }
 		int &value() { return value_; }
+		Type_Declaration::Ptr type() override { return integer_type; }
 };
 
 class Variable_Declaration: public Declaration {
