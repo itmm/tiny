@@ -51,6 +51,17 @@ namespace Char_Info {
 	}
 }
 
+void Lexer::double_token(Token &tok, Token_Kind with_equals, Token_Kind without_equals) {
+	std::string name; name += ch_;
+	ch_ = in_.get();
+	if (ch_ == '=') {
+		set_token(tok, name + '=', with_equals);
+		ch_ = in_.get();
+	} else {
+		set_token(tok, name, without_equals);
+	}
+}
+
 void Lexer::next(Token &tok) {
 	while (Char_Info::is_whitespace(ch_)) {
 		if (ch_ == '\n') { ++line_; }
@@ -83,24 +94,23 @@ void Lexer::next(Token &tok) {
 		CASE(';', Token_Kind::semicolon);
 		CASE('.', Token_Kind::period);
 		CASE('#', Token_Kind::not_equal);
+		CASE('=', Token_Kind::equal);
 		#undef CASE
 		case ':':
-			ch_ = in_.get();
-			if (ch_ == '=') {
-				set_token(tok, ":=", Token_Kind::assign);
-				ch_ = in_.get();
-			} else {
-				set_token(tok, ":", Token_Kind::colon);
-			}
-			break;
+	       		double_token(
+				tok, Token_Kind::assign, Token_Kind::colon
+			);
+		       	break;
 		case '<':
-			ch_ = in_.get();
-			if (ch_ == '=') {
-				set_token(tok, "<=", Token_Kind::less_equal);
-				ch_ = in_.get();
-			} else {
-				set_token(tok, "<", Token_Kind::less);
-			}
+			double_token(
+				tok, Token_Kind::less_equal, Token_Kind::less
+			);
+			break;
+		case '>':
+			double_token(
+				tok, Token_Kind::greater_equal,
+			       	Token_Kind::greater
+			);
 			break;
 		default: throw Unknown_Char_Err { static_cast<char>(ch_) };
 
