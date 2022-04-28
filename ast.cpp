@@ -5,6 +5,9 @@
 Type_Declaration::Ptr boolean_type = Type_Declaration::create("BOOLEAN");
 Type_Declaration::Ptr integer_type = Type_Declaration::create("INTEGER");
 
+Type_Declaration::Ptr Bool_Trait::oberon_type = boolean_type;
+Type_Declaration::Ptr Integer_Trait::oberon_type = integer_type;
+
 Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type) {
 	if (! type) { throw Error { "no type in creation of '" + name + "'" }; }
 	if (type == integer_type) {

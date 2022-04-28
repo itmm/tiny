@@ -38,33 +38,33 @@ class Expression {
 
 class Literal: public Expression { };
 
-class Bool_Literal: public Literal {
-		bool value_;
-		Bool_Literal(bool value): value_ { value } { }
+template<typename TRAIT> class Concrete_Literal: public Literal {
+		typename TRAIT::base_type value_;
+		Concrete_Literal(typename TRAIT::base_type value): value_ { value } { }
 	public:
-		using Ptr = std::shared_ptr<Bool_Literal>;
-		static auto create(bool value) {
-			return Ptr { new Bool_Literal { value } };
+		using Ptr = std::shared_ptr<Concrete_Literal<TRAIT>>;
+		static auto create(typename TRAIT::base_type value) {
+			return Ptr { new Concrete_Literal<TRAIT> { value } };
 		}
 		Type_Declaration::Ptr type() override {
-			return boolean_type;
+			return TRAIT::oberon_type;
 		}
-		bool value() const { return value_; }
+		auto value() const { return value_; }
 };
 
-class Integer_Literal: public Literal {
-		int value_;
-		Integer_Literal(int value): value_ { value } { }
-	public:
-		using Ptr = std::shared_ptr<Integer_Literal>;
-		static auto create(int value) {
-			return Ptr { new Integer_Literal { value } };
-		}
-		Type_Declaration::Ptr type() override {
-			return integer_type;
-		}
-		int value() const { return value_; }
+struct Bool_Trait {
+	using base_type = bool;
+	static Type_Declaration::Ptr oberon_type;
 };
+
+using Bool_Literal = Concrete_Literal<Bool_Trait>;
+
+struct Integer_Trait {
+	using base_type = int;
+	static Type_Declaration::Ptr oberon_type;
+};
+
+using Integer_Literal = Concrete_Literal<Integer_Trait>;
 
 class Binary_Op: public Expression {
 	public:
