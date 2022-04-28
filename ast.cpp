@@ -18,57 +18,92 @@ Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type) {
 	throw Error { "can't create variable from " + type->name() };
 }
 
-static Expression::Ptr literal_bin_not_equal(
-	Literal::Ptr left, Literal::Ptr right
+template<typename RESULT, typename ARGS, typename FN> Expression::Ptr apply_casted(
+	Literal::Ptr left, Literal::Ptr right, FN fn
 ) {
-	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
-		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
-		if (! ir) { throw Error { "#: not both literals are integers" }; }
-		return Bool_Literal::create(il->value() != ir->value());
+	if (auto cl { std::dynamic_pointer_cast<ARGS>(left) }) {
+		auto cr { std::dynamic_pointer_cast<ARGS>(right) };
+		if (! cr) { throw Error { "type casting error" }; }
+		return RESULT::create(fn(cl->value(), cr->value()));
 	}
-
-	if (auto bl { std::dynamic_pointer_cast<Bool_Literal>(left) }) {
-		auto br { std::dynamic_pointer_cast<Bool_Literal>(right) };
-		if (! br) { throw Error { "#: not both literals are boolean" }; }
-		return Bool_Literal::create(bl->value() != br->value());
-	}
-
-	throw Error { "#: wrong literal argument types" };
+	return nullptr;
 }
 
-static Expression::Ptr literal_bin_plus(
-	Literal::Ptr left, Literal::Ptr right
+template<typename ARGS, typename FN> inline auto apply_bool_casted(
+	Literal::Ptr left, Literal::Ptr right, FN fn
 ) {
-	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
-		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
-		if (! ir) { throw Error { "+: not both literals are integer" }; }
-		return Integer_Literal::create(il->value() + ir->value());
-	}
-
-	throw Error { "+: wrong literal argument types" };
+	return apply_casted<Bool_Literal, ARGS, FN>(left, right, fn);
 }
 
-static Expression::Ptr literal_bin_minus(
-	Literal::Ptr left, Literal::Ptr right
+template<typename FN> inline auto apply_bool_bool_casted(
+	Literal::Ptr left, Literal::Ptr right, FN fn
 ) {
-	if (auto il { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
-		auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
-		if (! ir) { throw Error { "-: not both literals are integer" }; }
-		return Integer_Literal::create(il->value() - ir->value());
-	}
-
-	throw Error { "-: wrong literal argument type" };
+	return apply_bool_casted<Bool_Literal, FN>(left, right, fn);
 }
+
+template<typename FN> inline auto apply_bool_int_casted(
+	Literal::Ptr left, Literal::Ptr right, FN fn
+) {
+	return apply_bool_casted<Integer_Literal, FN>(left, right, fn);
+}
+
+template<typename FN> inline auto literal_full_relation(Literal::Ptr left, Literal::Ptr right, FN fn) {
+	if (auto res { apply_bool_int_casted(left, right, fn) }) { return res; }
+	if (auto res { apply_bool_bool_casted(left, right, fn) }) { return res; }
+
+	throw Error { "wrong full relation argument types" };
+}
+
+template<typename ARGS, typename FN> inline auto apply_int_casted(
+	Literal::Ptr left, Literal::Ptr right, FN fn
+) {
+	return apply_casted<Integer_Literal, ARGS, FN>(left, right, fn);
+}
+
+template<typename FN> inline auto apply_int_int_casted(
+	Literal::Ptr left, Literal::Ptr right, FN fn
+) {
+	return apply_int_casted<Integer_Literal, FN>(left, right, fn);
+}
+
+template<typename FN> inline auto literal_bin_numeric(
+	Literal::Ptr left, Literal::Ptr right, FN fn
+) {
+	if (auto res { apply_int_int_casted(left, right, fn) }) { return res; }
+
+	throw Error { "binary numeric: wrong argument types" };
+}
+
+struct Not_Equal {
+	bool operator()(int a, int b) { return a != b; }
+	bool operator()(bool a, bool b) { return a != b; }
+};
 
 static Expression::Ptr literal_bin_op(
 	Binary_Op::Operator op, Literal::Ptr left, Literal::Ptr right
 ) {
 	if (op == Binary_Op::not_equal) {
-		return literal_bin_not_equal(left, right);
+		return literal_full_relation(left, right, Not_Equal{ });
 	} else if (op == Binary_Op::plus) {
-		return literal_bin_plus(left, right);
+		return literal_bin_numeric(
+			left, right, [](int a, int b) { return a + b; }
+		);
 	} else if (op == Binary_Op::minus) {
-		return literal_bin_minus(left, right);
+		return literal_bin_numeric(
+			left, right, [](int a, int b) { return a - b; }
+		);
+	} else if (op == Binary_Op::mul) {
+		return literal_bin_numeric(
+			left, right, [](int a, int b) { return a * b; }
+		);
+	} else if (op == Binary_Op::div) {
+		return literal_bin_numeric(
+			left, right, [](int a, int b) { return a / b; }
+		);
+	} else if (op == Binary_Op::mod) {
+		return literal_bin_numeric(
+			left, right, [](int a, int b) { return a % b; }
+		);
 	}
 	throw Error { "not implemented yet" };
 }
