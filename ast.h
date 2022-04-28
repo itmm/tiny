@@ -120,53 +120,37 @@ class Variable: public Expression {
 		const std::string &name() const { return name_; }
 };
 
-class Bool_Variable: public Variable {
-		bool value_;
-		Bool_Variable(std::string name): Variable { name } { }
+template<typename TRAIT> class Concrete_Variable: public Variable {
+		typename TRAIT::base_type value_;
+		Concrete_Variable(std::string name): Variable { name } { }
 	public:
-		using Ptr = std::shared_ptr<Bool_Variable>;
+		using Ptr = std::shared_ptr<Concrete_Variable<TRAIT>>;
 		static auto create(std::string name) {
-			return Ptr { new Bool_Variable { name } };
+			return Ptr { new Concrete_Variable<TRAIT> { name } };
 		}
-		const bool &value() const { return value_; }
-		bool &value() { return value_; }
-		Type_Declaration::Ptr type() override { return boolean_type; }
+		std::string name() const { return name_; }
+		const auto &value() const { return value_; }
+		auto &value() { return value_; }
+		Type_Declaration::Ptr type() override {
+		       	return TRAIT::oberon_type;
+	       	}
 };
 
-class Integer_Variable: public Variable {
-		int value_;
-		Integer_Variable(std::string name): Variable { name } { }
-	public:
-		using Ptr = std::shared_ptr<Integer_Variable>;
-		static auto create(std::string name) {
-			return Ptr { new Integer_Variable { name } };
-		}
-		const int &value() const { return value_; }
-		int &value() { return value_; }
-		Type_Declaration::Ptr type() override { return integer_type; }
-};
+using Bool_Variable = Concrete_Variable<Bool_Trait>;
+using Integer_Variable = Concrete_Variable<Integer_Trait>;
 
 class Variable_Declaration: public Declaration {
-		Type_Declaration::Ptr type_;
 		Variable::Ptr variable_;
 
-		Variable_Declaration(
-		       	std::string name, Type_Declaration::Ptr type,
-			Variable::Ptr variable
-		):
-			Declaration(name), type_ { type }, variable_ { variable }
+		Variable_Declaration(Variable::Ptr variable):
+			Declaration(variable->name()), variable_ { variable }
 		{ }
 	public:
 		using Ptr = std::shared_ptr<Variable_Declaration>;
-		static auto create(
-		       	std::string name, Type_Declaration::Ptr type,
-			Variable::Ptr variable
-		) {
-			return Ptr { new Variable_Declaration {
-			       	name, type, variable
-		       	} };
+		static auto create(Variable::Ptr variable) {
+			return Ptr { new Variable_Declaration { variable } };
 		}
-		auto type() { return type_; }
+		auto type() { return variable_->type(); }
 		auto variable() { return variable_; }
 };
 

@@ -17,6 +17,7 @@ static std::map<std::string, Token_Kind> keywords {
 	{ "ARRAY", Token_Kind::kw_ARRAY },
 	{ "BEGIN", Token_Kind::kw_BEGIN },
 	{ "CONST", Token_Kind::kw_CONST },
+	{ "DIV", Token_Kind::kw_DIV },
 	{ "DO", Token_Kind::kw_DO },
 	{ "IF", Token_Kind::kw_IF },
 	{ "IMPORT", Token_Kind::kw_IMPORT },

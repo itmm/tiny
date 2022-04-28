@@ -7,6 +7,7 @@ void Parser::parse() {
 }
 
 std::shared_ptr<Expression> Parser::parse_simple_expression() {
+	// TODO: unary +/-
 	auto left { parse_term() };
 	while (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
 		Binary_Op::Operator op {
@@ -32,7 +33,7 @@ std::shared_ptr<Expression> Parser::parse_expression() {
 
 std::shared_ptr<Expression> Parser::parse_term() {
 	auto left { parse_factor() };
-	while (tok_.is_one_of(Token_Kind::star, Token_Kind::slash, Token_Kind::kw_MOD)) {
+	while (tok_.is_one_of(Token_Kind::star, Token_Kind::kw_DIV, Token_Kind::kw_MOD)) {
 		Binary_Op::Operator op {
 			tok_.is(Token_Kind::star) ? Binary_Op::mul :
 			tok_.is(Token_Kind::kw_MOD) ? Binary_Op::mod : Binary_Op::div
@@ -157,7 +158,7 @@ void Parser::parse_variable_declaration() {
 	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(n, t, Variable::create(n, t));
+		auto dcl = Variable_Declaration::create(Variable::create(n, t));
 		current_scope->insert(dcl);
 	}
 }
