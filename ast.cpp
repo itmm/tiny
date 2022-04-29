@@ -54,6 +54,12 @@ template<typename FN> inline auto literal_full_relation(Literal::Ptr left, Liter
 	throw Error { "wrong full relation argument types" };
 }
 
+template<typename FN> inline auto literal_num_relation(Literal::Ptr left, Literal::Ptr right, FN fn) {
+	if (auto res { apply_bool_int_casted(left, right, fn) }) { return res; }
+
+	throw Error { "wrong numeric relation argument types" };
+}
+
 template<typename ARGS, typename FN> inline auto apply_int_casted(
 	Literal::Ptr left, Literal::Ptr right, FN fn
 ) {
@@ -74,6 +80,11 @@ template<typename FN> inline auto literal_bin_numeric(
 	throw Error { "binary numeric: wrong argument types" };
 }
 
+struct Equal {
+	bool operator()(int a, int b) { return a == b; }
+	bool operator()(bool a, bool b) { return a == b; }
+};
+
 struct Not_Equal {
 	bool operator()(int a, int b) { return a != b; }
 	bool operator()(bool a, bool b) { return a != b; }
@@ -82,8 +93,26 @@ struct Not_Equal {
 static Expression::Ptr literal_bin_op(
 	Binary_Op::Operator op, Literal::Ptr left, Literal::Ptr right
 ) {
-	if (op == Binary_Op::not_equal) {
+	if (op == Binary_Op::equal) {
+		return literal_full_relation(left, right, Equal{ });
+	} else if (op == Binary_Op::not_equal) {
 		return literal_full_relation(left, right, Not_Equal{ });
+	} else if (op == Binary_Op::less) {
+		return literal_num_relation(
+			left, right, [](int a, int b) { return a < b; }
+		);
+	} else if (op == Binary_Op::less_equal) {
+		return literal_num_relation(
+			left, right, [](int a, int b) { return a <= b; }
+		);
+	} else if (op == Binary_Op::greater) {
+		return literal_num_relation(
+			left, right, [](int a, int b) { return a > b; }
+		);
+	} else if (op == Binary_Op::greater_equal) {
+		return literal_num_relation(
+			left, right, [](int a, int b) { return a >= b; }
+		);
 	} else if (op == Binary_Op::plus) {
 		return literal_bin_numeric(
 			left, right, [](int a, int b) { return a + b; }

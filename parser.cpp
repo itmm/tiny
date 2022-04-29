@@ -7,8 +7,17 @@ void Parser::parse() {
 }
 
 std::shared_ptr<Expression> Parser::parse_simple_expression() {
-	// TODO: unary +/-
-	auto left { parse_term() };
+	Expression::Ptr left;
+	if (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
+		Binary_Op::Operator op {
+			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
+		};
+		advance();
+		auto right { parse_term() };
+		left = Binary_Op::create(op, Integer_Literal::create(0), right);
+	} else {
+		left = parse_term();
+	}
 	while (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
 		Binary_Op::Operator op {
 			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
@@ -22,8 +31,19 @@ std::shared_ptr<Expression> Parser::parse_simple_expression() {
 
 std::shared_ptr<Expression> Parser::parse_expression() {
 	auto left { parse_simple_expression() };
-	while (tok_.is(Token_Kind::not_equal)) {
-		Binary_Op::Operator op { Binary_Op::not_equal };
+	for (;;) {
+		bool found { true };
+		Binary_Op::Operator op;
+		switch (tok_.kind()) {
+			case Token_Kind::equal: op = Binary_Op::equal; break;
+			case Token_Kind::not_equal: op = Binary_Op::not_equal; break;
+			case Token_Kind::less: op = Binary_Op::less; break;
+			case Token_Kind::less_equal: op = Binary_Op::less_equal; break;
+			case Token_Kind::greater: op = Binary_Op::greater; break;
+			case Token_Kind::greater_equal: op = Binary_Op::greater_equal; break;
+			default: found = false; break;
+		}
+		if (! found) { break; }
 		advance();
 		auto right { parse_simple_expression() };
 		left = Binary_Op::create(op, left, right);
