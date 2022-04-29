@@ -157,3 +157,16 @@ class Variable_Declaration: public Declaration {
 		auto variable() { return variable_; }
 };
 
+class Const_Declaration: public Declaration {
+		Literal::Ptr literal_;
+
+		Const_Declaration(std::string name, Literal::Ptr literal):
+			Declaration { name }, literal_ { literal }
+		{ }
+	public:
+		using Ptr = std::shared_ptr<Const_Declaration>;
+		static auto create(std::string name, Literal::Ptr literal) {
+			return Ptr { new Const_Declaration { name, literal } };
+		}
+		auto value() { return literal_; }
+};

@@ -75,9 +75,11 @@ Expression::Ptr Parser::parse_factor() {
 			advance(); break;
 		case Token_Kind::identifier: {
 			auto got { parse_qual_ident() };
-			auto var { std::dynamic_pointer_cast<Variable_Declaration>(got) };
-			if (! var) { throw Error { got->name() + " is no variable" }; };
-			res = var->variable();
+			if (auto var { std::dynamic_pointer_cast<Variable_Declaration>(got) }) {
+				res = var->variable();
+			} else if (auto cnst { std::dynamic_pointer_cast<Const_Declaration>(got) }) {
+				res = cnst->value();
+			} else { throw Error { got->name() + " not found" }; }
 			break;
 		}
 		case Token_Kind::kw_FALSE:
@@ -294,6 +296,19 @@ void Parser::parse_procedure_declaration() {
 
 void Parser::parse_declaration_sequence() {
 	if (tok_.is(Token_Kind::kw_CONST)) {
+		advance();
+		while (tok_.is(Token_Kind::identifier)) {
+			auto name { tok_.identifier() };
+			advance();
+			consume(Token_Kind::equal);
+			auto got { parse_expression() };
+			auto lit { std::dynamic_pointer_cast<Literal>(got) };
+			if (! lit) { throw Error { "expression is not const" }; }
+			if (! current_scope->insert(Const_Declaration::create(name, lit))) {
+				throw Error { name + " already defined" };
+			}
+			consume(Token_Kind::semicolon);
+		}
 		throw Error { "CONST not implemented" };
 	}
 	if (tok_.is(Token_Kind::kw_TYPE)) {
