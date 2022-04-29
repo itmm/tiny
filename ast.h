@@ -78,7 +78,8 @@ class Binary_Op: public Expression {
 	public:
 		enum Operator {
 		       	none, plus, minus, mul, div, equal, not_equal,
-			less, less_equal, greater, greater_equal, mod 
+			less, less_equal, greater, greater_equal, mod,
+			op_and, op_or
 		};
 	private:
 		Expression::Ptr left_;
@@ -96,7 +97,26 @@ class Binary_Op: public Expression {
 		);
 		auto left() const { return left_; }
 		auto right() const { return right_; }
-		Operator op() const { return op_; }
+		auto op() const { return op_; }
+		Type_Declaration::Ptr type() override;
+};
+
+class Unary_Op: public Expression {
+	public:
+		enum Operator { none, op_not };
+	private:
+		Expression::Ptr arg_;
+		Operator op_;
+		Unary_Op(
+			Operator op, Expression::Ptr arg
+		): arg_ { arg }, op_ { op } { }
+	public:
+		using Ptr = std::shared_ptr<Unary_Op>;
+		static Expression::Ptr create(
+			Operator op, Expression::Ptr arg
+		);
+		auto arg() const { return arg_; }
+		auto op() const { return op_; }
 		Type_Declaration::Ptr type() override;
 };
 

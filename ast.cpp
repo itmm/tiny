@@ -128,6 +128,14 @@ template<typename FN> inline auto literal_bin_int(
 	throw Error { "binary numeric: wrong argument types" };
 }
 
+template<typename FN> inline auto literal_bin_bool(
+	Literal::Ptr left, Literal::Ptr right, FN fn
+) {
+	if (auto res { apply_bool_bool_casted(left, right, fn) }) { return res; }
+
+	throw Error { "binary boolean: wrong argument types" };
+}
+
 struct Equal {
 	bool operator()(int a, int b) { return a == b; }
 	bool operator()(bool a, bool b) { return a == b; }
@@ -204,6 +212,14 @@ static Expression::Ptr literal_bin_op(
 		return literal_bin_int(
 			left, right, [](int a, int b) { return a % b; }
 		);
+	} else if (op == Binary_Op::op_and) {
+		return literal_bin_bool(
+			left, right, [](bool a, bool b) { return a && b; }
+		);
+	} else if (op == Binary_Op::op_or) {
+		return literal_bin_bool(
+			left, right, [](bool a, bool b) { return a || b; }
+		);
 	}
 	throw Error { "not implemented yet" };
 }
@@ -221,8 +237,46 @@ Expression::Ptr Binary_Op::create(
 }
 
 Type_Declaration::Ptr Binary_Op::type() {
-	if (op() == Operator::not_equal) {
+	switch (op()) {
+		case Operator::none:
+			return nullptr;
+		case Operator::equal:
+		case Operator::not_equal:
+		case Operator::less:
+		case Operator::less_equal:
+		case Operator::greater:
+		case Operator::greater_equal:
+		case Operator::op_and:
+		case Operator::op_or:
+			return boolean_type;
+		default: break;
+	}
+
+	auto lt { left_->type() };
+	auto rt { right_->type() };
+	if (lt == integer_type && rt == integer_type) {
+		return integer_type;
+	}
+	if (lt == real_type && (rt == integer_type || rt == real_type)) {
+		return real_type;
+	}
+	if (lt == integer_type && rt == real_type) {
+		return real_type;
+	}
+	return nullptr;
+}
+
+Expression::Ptr Unary_Op::create(Operator op, Expression::Ptr arg) {
+	if (op == Operator::op_not) {
+		auto ba { std::dynamic_pointer_cast<Bool_Literal>(arg) };
+		if (ba) { return Bool_Literal::create(! ba->value()); }
+	}
+	return Ptr { new Unary_Op { op, arg } };
+}
+
+Type_Declaration::Ptr Unary_Op::type() {
+	if (op() == Operator::op_not) {
 		return boolean_type;
 	}
-	return integer_type;
+	return nullptr;
 }

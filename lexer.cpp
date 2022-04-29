@@ -28,6 +28,7 @@ static std::map<std::string, Token_Kind> keywords {
 	{ "MOD", Token_Kind::kw_MOD },
 	{ "MODULE", Token_Kind::kw_MODULE },
 	{ "OF", Token_Kind::kw_OF },
+	{ "OR", Token_Kind::kw_OR },
 	{ "PROCEDURE", Token_Kind::kw_PROCEDURE },
 	{ "REPEAT", Token_Kind::kw_REPEAT },
 	{ "RETURN", Token_Kind::kw_RETURN },
@@ -97,6 +98,8 @@ void Lexer::next(Token &tok) {
 		CASE('.', Token_Kind::period);
 		CASE('#', Token_Kind::not_equal);
 		CASE('=', Token_Kind::equal);
+		CASE('&', Token_Kind::sym_and);
+		CASE('~', Token_Kind::sym_not);
 		#undef CASE
 		case ':':
 	       		double_token(

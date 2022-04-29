@@ -88,6 +88,10 @@ Expression::Ptr Parser::parse_factor() {
 		case Token_Kind::kw_TRUE:
 			res = Bool_Literal::create(true);
 			advance(); break;
+		case Token_Kind::sym_not:
+			advance();
+			res = Unary_Op::create(Unary_Op::op_not, parse_expression());
+			break;
 		case Token_Kind::l_paren:
 			advance();
 			res = parse_expression();
@@ -311,7 +315,7 @@ void Parser::parse_declaration_sequence() {
 		}
 	}
 	if (tok_.is(Token_Kind::kw_TYPE)) {
-		throw Error { "TYPE not imp]emented" };
+		throw Error { "TYPE not imp]emented" }; // TODO
 	}
 	if (tok_.is(Token_Kind::kw_VAR)) {
 		advance();
@@ -340,7 +344,7 @@ Module_Declaration::Ptr Parser::parse_module() {
 	consume(Token_Kind::semicolon);
 	
 	if (tok_.is(Token_Kind::kw_IMPORT)) {
-		throw Error { "IMPORT not implemented" };
+		throw Error { "IMPORT not implemented" }; // TODO
 	}
 
 	parse_declaration_sequence();
