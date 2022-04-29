@@ -28,6 +28,7 @@ class Type_Declaration: public Declaration {
 
 extern Type_Declaration::Ptr boolean_type;
 extern Type_Declaration::Ptr integer_type;
+extern Type_Declaration::Ptr real_type;
 
 class Expression {
 	public:
@@ -65,6 +66,13 @@ struct Integer_Trait {
 };
 
 using Integer_Literal = Concrete_Literal<Integer_Trait>;
+
+struct Real_Trait {
+	using base_type = double;
+	static Type_Declaration::Ptr oberon_type;
+};
+
+using Real_Literal = Concrete_Literal<Real_Trait>;
 
 class Binary_Op: public Expression {
 	public:
@@ -141,6 +149,7 @@ template<typename TRAIT> class Concrete_Variable: public Variable {
 
 using Bool_Variable = Concrete_Variable<Bool_Trait>;
 using Integer_Variable = Concrete_Variable<Integer_Trait>;
+using Real_Variable = Concrete_Variable<Real_Trait>;
 
 class Variable_Declaration: public Declaration {
 		Variable::Ptr variable_;
