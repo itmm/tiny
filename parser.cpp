@@ -309,7 +309,6 @@ void Parser::parse_declaration_sequence() {
 			}
 			consume(Token_Kind::semicolon);
 		}
-		throw Error { "CONST not implemented" };
 	}
 	if (tok_.is(Token_Kind::kw_TYPE)) {
 		throw Error { "TYPE not imp]emented" };
