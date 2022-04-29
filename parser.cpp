@@ -6,34 +6,32 @@ void Parser::parse() {
 	expect(Token_Kind::eoi);
 }
 
-std::shared_ptr<Expression> Parser::parse_simple_expression() {
-	Expression::Ptr left;
+Expression::Ptr Parser::parse_plus_minus(Expression::Ptr left) {
 	if (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
 		Binary_Op::Operator op {
 			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
 		};
 		advance();
 		auto right { parse_term() };
-		left = Binary_Op::create(op, Integer_Literal::create(0), right);
+		return Binary_Op::create(op, Integer_Literal::create(0), right);
 	} else {
-		left = parse_term();
+		return nullptr;
 	}
-	while (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
-		Binary_Op::Operator op {
-			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
-		};
-		advance();
-		auto right { parse_term() };
-		left = Binary_Op::create(op, left, right);
+}
+
+Expression::Ptr Parser::parse_simple_expression() {
+	Expression::Ptr left { parse_plus_minus(Integer_Literal::create(0)) };
+	if (! left) { left = parse_term(); }
+	while (auto got { parse_plus_minus(left) }) {
+		left = got;
 	}
 	return left;
 }
 
-std::shared_ptr<Expression> Parser::parse_expression() {
+Expression::Ptr Parser::parse_expression() {
 	auto left { parse_simple_expression() };
 	for (;;) {
-		bool found { true };
-		Binary_Op::Operator op;
+		auto op { Binary_Op::none };
 		switch (tok_.kind()) {
 			case Token_Kind::equal: op = Binary_Op::equal; break;
 			case Token_Kind::not_equal: op = Binary_Op::not_equal; break;
@@ -41,9 +39,9 @@ std::shared_ptr<Expression> Parser::parse_expression() {
 			case Token_Kind::less_equal: op = Binary_Op::less_equal; break;
 			case Token_Kind::greater: op = Binary_Op::greater; break;
 			case Token_Kind::greater_equal: op = Binary_Op::greater_equal; break;
-			default: found = false; break;
+			default: break;
 		}
-		if (! found) { break; }
+		if (op == Binary_Op::none) { break; }
 		advance();
 		auto right { parse_simple_expression() };
 		left = Binary_Op::create(op, left, right);
@@ -51,13 +49,17 @@ std::shared_ptr<Expression> Parser::parse_expression() {
 	return left;
 }
 
-std::shared_ptr<Expression> Parser::parse_term() {
+Expression::Ptr Parser::parse_term() {
 	auto left { parse_factor() };
-	while (tok_.is_one_of(Token_Kind::star, Token_Kind::kw_DIV, Token_Kind::kw_MOD)) {
-		Binary_Op::Operator op {
-			tok_.is(Token_Kind::star) ? Binary_Op::mul :
-			tok_.is(Token_Kind::kw_MOD) ? Binary_Op::mod : Binary_Op::div
-		};
+	for (;;) {
+		auto op { Binary_Op::none };
+		switch (tok_.kind()) {
+			case Token_Kind::star: op = Binary_Op::mul; break;
+			case Token_Kind::kw_DIV: op = Binary_Op::div; break;
+			case Token_Kind::kw_MOD: op = Binary_Op::mod; break;
+			default: break;
+		}
+		if (op == Binary_Op::none) { break; }
 		advance();
 		auto right { parse_factor() };
 		left = Binary_Op::create(op, left, right);
@@ -65,7 +67,7 @@ std::shared_ptr<Expression> Parser::parse_term() {
 	return left;
 }
 
-std::shared_ptr<Expression> Parser::parse_factor() {
+Expression::Ptr Parser::parse_factor() {
 	std::shared_ptr<Expression> res;
 	switch(tok_.kind()) {
 		case Token_Kind::integer_literal:
@@ -108,6 +110,7 @@ void Parser::parse_statement() {
 		parse_expression();
 		consume(Token_Kind::kw_DO);
 		parse_statement_sequence();
+		// TODO: elsif
 		consume(Token_Kind::kw_END);
 		return;
 	}
@@ -159,7 +162,7 @@ std::vector<std::string> Parser::parse_ident_list() {
 	return ids;
 }
 
-std::shared_ptr<Declaration> Parser::parse_qual_ident() {
+Declaration::Ptr Parser::parse_qual_ident() {
 	expect(Token_Kind::identifier);
 	auto got { current_scope->lookup(tok_.identifier()) };
 	if (! got) {
@@ -183,7 +186,7 @@ void Parser::parse_variable_declaration() {
 	}
 }
 
-std::shared_ptr<Declaration> Parser::parse_formal_type() {
+Declaration::Ptr Parser::parse_formal_type() {
 	if (tok_.is(Token_Kind::kw_ARRAY)) {
 		advance();
 		consume(Token_Kind::kw_OF);
@@ -275,7 +278,7 @@ void Parser::parse_declaration_sequence() {
 	}
 }
 
-std::shared_ptr<Module_Declaration> Parser::parse_module() {
+Module_Declaration::Ptr Parser::parse_module() {
 	consume(Token_Kind::kw_MODULE);
 	expect(Token_Kind::identifier);
 	auto mod = Module_Declaration::create(tok_.identifier());

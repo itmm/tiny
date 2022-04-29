@@ -68,7 +68,10 @@ using Integer_Literal = Concrete_Literal<Integer_Trait>;
 
 class Binary_Op: public Expression {
 	public:
-		enum Operator { plus, minus, mul, div, equal, not_equal, less, less_equal, greater, greater_equal, mod };
+		enum Operator {
+		       	none, plus, minus, mul, div, equal, not_equal,
+			less, less_equal, greater, greater_equal, mod 
+		};
 	private:
 		Expression::Ptr left_;
 		Expression::Ptr right_;
