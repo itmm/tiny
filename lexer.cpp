@@ -29,10 +29,12 @@ static std::map<std::string, Token_Kind> keywords {
 	{ "MODULE", Token_Kind::kw_MODULE },
 	{ "OF", Token_Kind::kw_OF },
 	{ "PROCEDURE", Token_Kind::kw_PROCEDURE },
+	{ "REPEAT", Token_Kind::kw_REPEAT },
 	{ "RETURN", Token_Kind::kw_RETURN },
 	{ "THEN", Token_Kind::kw_THEN },
 	{ "TRUE", Token_Kind::kw_TRUE },
 	{ "TYPE", Token_Kind::kw_TYPE },
+	{ "UNTIL", Token_Kind::kw_UNTIL },
 	{ "VAR", Token_Kind::kw_VAR },
 	{ "WHILE", Token_Kind::kw_WHILE },
 	{ "WITH", Token_Kind::kw_WITH }

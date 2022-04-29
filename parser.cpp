@@ -102,20 +102,47 @@ void Parser::parse_designator() {
 }
 
 void Parser::parse_statement() {
-	// TODO: Procedure Call
-	// TODO: if statement
+	if (tok_.is(Token_Kind::kw_IF)) {
+		advance();
+		parse_expression();
+		consume(Token_Kind::kw_THEN);
+		parse_statement_sequence();
+		while (tok_.is(Token_Kind::kw_ELSIF)) {
+			advance();
+			parse_expression();
+			consume(Token_Kind::kw_THEN);
+			parse_statement_sequence();
+		}
+		if (tok_.is(Token_Kind::kw_ELSE)) {
+			advance();
+			parse_statement_sequence();
+		}
+		consume(Token_Kind::kw_END);
+		return;
+	}
 	// TODO: case statement
 	if (tok_.is(Token_Kind::kw_WHILE)) {
 		advance();
 		parse_expression();
 		consume(Token_Kind::kw_DO);
 		parse_statement_sequence();
-		// TODO: elsif
+		while (tok_.is(Token_Kind::kw_ELSIF)) {
+			advance();
+			parse_expression();
+			consume(Token_Kind::kw_DO);
+			parse_statement_sequence();
+		}
 		consume(Token_Kind::kw_END);
 		return;
 	}
 
-	// TODO: repeat statement
+	if (tok_.is(Token_Kind::kw_REPEAT)) {
+		advance();
+		parse_statement_sequence();
+		consume(Token_Kind::kw_UNTIL);
+		parse_expression();
+		return;
+	}
 	// TODO: for statement
 
 	if (! tok_.is(Token_Kind::identifier)) { return; }
@@ -124,6 +151,16 @@ void Parser::parse_statement() {
 	if (tok_.is(Token_Kind::assign)) {
 		advance();
 		parse_expression();
+	} else if (tok_.is(Token_Kind::l_paren)) {
+		advance();
+		if (! tok_.is(Token_Kind::r_paren)) {
+			parse_expression();
+			while (tok_.is(Token_Kind::comma)) {
+				advance();
+				parse_expression();
+			}
+		}
+		consume(Token_Kind::r_paren);
 	}
 }
 
@@ -295,7 +332,8 @@ Module_Declaration::Ptr Parser::parse_module() {
 	parse_declaration_sequence();
 
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
-		throw Error { "MODULE statements not implemented" };
+		advance();
+		parse_statement_sequence();
 	}
 
 	consume(Token_Kind::kw_END);
