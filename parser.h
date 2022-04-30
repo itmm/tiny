@@ -26,19 +26,22 @@ class Parser {
 			expect(k); advance();
 		}
 
+		llvm::Value *expr_to_value(Expression::Ptr exp);
+
 		Expression::Ptr parse_expression();
 		Expression::Ptr parse_plus_minus(Expression::Ptr left);
 		Expression::Ptr parse_simple_expression();
 		Expression::Ptr parse_term();
 		Expression::Ptr parse_factor();
-		void parse_designator();
+		Declaration::Ptr parse_designator();
 		void parse_statement();
 		void parse_statement_sequence();
 		void parse_if();
 
 		std::vector<std::string> parse_ident_list();
 		Declaration::Ptr parse_qual_ident();
-		std::vector<Variable_Declaration::Ptr> parse_variable_declaration(bool is_var);
+		std::vector<Variable_Declaration::Ptr> parse_variable_declaration();
+		std::vector<Variable_Declaration::Ptr> parse_parameter_declaration(bool is_var);
 		Declaration::Ptr parse_formal_type();
 		std::vector<Variable_Declaration::Ptr> parse_fp_section(Procedure_Declaration::Ptr decl);
 		void parse_formal_parameters(Procedure_Declaration::Ptr decl);

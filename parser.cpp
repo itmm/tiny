@@ -3,6 +3,8 @@
 #include "ll_type.h"
 #include "scope.h"
 
+#include "llvm/IR/Constants.h"
+
 void Parser::parse() {
 	parse_module();
 	expect(Token_Kind::eoi);
@@ -104,8 +106,8 @@ Expression::Ptr Parser::parse_factor() {
 	return res;
 }
 
-void Parser::parse_designator() {
-	parse_qual_ident();
+Declaration::Ptr Parser::parse_designator() {
+	return parse_qual_ident();
 	// TODO: selectors
 }
 
@@ -155,10 +157,14 @@ void Parser::parse_statement() {
 
 	if (! tok_.is(Token_Kind::identifier)) { return; }
 
-	parse_designator();
+	auto id { parse_designator() };
 	if (tok_.is(Token_Kind::assign)) {
 		advance();
-		parse_expression();
+		auto v { std::dynamic_pointer_cast<Variable_Declaration>(id) };
+		if (! v) { throw Error { v->name() + " is no variable for assignment" }; }
+		auto e { parse_expression() };
+		auto l { expr_to_value(e) };
+		builder_.CreateStore(v->variable()->llvm_value(), l);
 	} else if (tok_.is(Token_Kind::l_paren)) {
 		advance();
 		if (! tok_.is(Token_Kind::r_paren)) {
@@ -219,7 +225,7 @@ Declaration::Ptr Parser::parse_qual_ident() {
 	return got;
 }
 
-std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration(bool is_var) {
+std::vector<Variable_Declaration::Ptr> Parser::parse_parameter_declaration(bool is_var) {
 	auto ids { parse_ident_list() };
 	consume(Token_Kind::colon);
 	auto d { parse_qual_ident() };
@@ -227,7 +233,23 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration(bool i
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(Variable::create(n, t), is_var);
+		auto dcl = Variable_Declaration::create(Variable::create(n, t, nullptr), is_var);
+		current_scope->insert(dcl);
+		result.push_back(dcl);
+	}
+	return result;
+}
+
+std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration() {
+	auto ids { parse_ident_list() };
+	consume(Token_Kind::colon);
+	auto d { parse_qual_ident() };
+	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
+	if (! t) { throw Error { d->name() + " is no type" }; }
+	std::vector<Variable_Declaration::Ptr> result;
+	for (auto &n : ids) {
+		auto v { builder_.CreateAlloca(get_ll_type(t, mod_.getContext())) };
+		auto dcl = Variable_Declaration::create(Variable::create(n, t, v), false);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -245,7 +267,7 @@ Declaration::Ptr Parser::parse_formal_type() {
 std::vector<Variable_Declaration::Ptr> Parser::parse_fp_section(Procedure_Declaration::Ptr decl) {
 	bool is_var { tok_.is(Token_Kind::kw_VAR) };
 	if (is_var) { advance(); }
-	return parse_variable_declaration(is_var);
+	return parse_parameter_declaration(is_var);
 }
 
 void Parser::parse_formal_parameters(Procedure_Declaration::Ptr decl) {
@@ -311,6 +333,11 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declarati
 	}
 	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
 	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, parent->mangle(decl->name()), mod_) };
+	int j { 0 };
+	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i, ++j) {
+		(**i).variable()->set_llvm_value(fn->getArg(j));
+	}
+
 	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn) };
 	builder_.SetInsertPoint(entry);
 
@@ -351,11 +378,7 @@ void Parser::parse_declaration_sequence(Scoping_Declaration::Ptr parent) {
 			Token_Kind::eoi, Token_Kind::kw_END,
 			Token_Kind::kw_BEGIN, Token_Kind::kw_PROCEDURE
 		)) {
-			auto vars { parse_variable_declaration(false) };
-			for (auto var : vars) {
-				builder_.CreateAlloca(get_ll_type(var->variable()->type(), mod_.getContext()));
-				//new llvm::AllocaInst(get_ll_type(var->variable()->type(), mod_.getContext()), 0, var->name(), bb);
-			}
+			auto vars { parse_variable_declaration() };
 			consume(Token_Kind::semicolon);
 		}
 	}
@@ -397,6 +420,7 @@ Module_Declaration::Ptr Parser::parse_module() {
 	expect(Token_Kind::identifier);
 	if (tok_.identifier() != mod->name()) {
 		throw Error {
+
 			"MODULE '" + mod->name() + "' ends in name '" +
 			tok_.identifier() + "'" 
 		};
@@ -406,4 +430,57 @@ Module_Declaration::Ptr Parser::parse_module() {
 
 	return mod;
 };
+
+llvm::Value *Parser::expr_to_value(Expression::Ptr expr) {
+	if (auto v { std::dynamic_pointer_cast<Variable>(expr) }) {
+		return v->llvm_value();
+	}
+	if (auto v { std::dynamic_pointer_cast<Bool_Literal>(expr) }) {
+		if (v->value()) {
+			return llvm::ConstantInt::getTrue(get_ll_type(boolean_type, mod_.getContext()));
+		} else {
+			return llvm::ConstantInt::getFalse(get_ll_type(boolean_type, mod_.getContext()));
+		}
+	}
+	if (auto v { std::dynamic_pointer_cast<Integer_Literal>(expr) }) {
+		return llvm::ConstantInt::get(get_ll_type(integer_type, mod_.getContext()), v->value());
+	}
+	if (auto v { std::dynamic_pointer_cast<Real_Literal>(expr) }) {
+		return llvm::ConstantFP::get(get_ll_type(real_type, mod_.getContext()), v->value());
+	}
+	if (auto v { std::dynamic_pointer_cast<Binary_Op>(expr) }) {
+		auto left { expr_to_value(v->left()) };
+		auto right { expr_to_value(v->right()) };
+		switch (v->op()) {
+		       	case Binary_Op::plus:
+				return builder_.CreateAdd(left, right);
+			case Binary_Op::minus:
+				return builder_.CreateSub(left, right);
+			case Binary_Op::mul:
+				return builder_.CreateMul(left, right);
+			case Binary_Op::div:
+				return builder_.CreateSDiv(left, right);
+			case Binary_Op::equal:
+				return builder_.CreateICmpEQ(left, right);
+			case Binary_Op::not_equal:
+				return builder_.CreateICmpNE(left, right);
+			case Binary_Op::less:
+				return builder_.CreateICmpSLT(left, right);
+			case Binary_Op::less_equal:
+				return builder_.CreateICmpSLE(left, right);
+			case Binary_Op::greater:
+				return builder_.CreateICmpSGT(left, right);
+			case Binary_Op::greater_equal:
+				return builder_.CreateICmpSGE(left, right);
+			case Binary_Op::mod:
+				return builder_.CreateSRem(left, right);
+			case Binary_Op::op_and:
+				return builder_.CreateAnd(left, right);
+			case Binary_Op::op_or:
+				return builder_.CreateOr(left, right);
+			default: throw Error { "unknown binary" };
+		}
+	}
+	throw Error { "no value" };
+}
 

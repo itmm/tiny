@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+#include "llvm/IR/Value.h"
+
 class Declaration {
 		const std::string name_;
 	protected:
@@ -142,23 +144,26 @@ class Module_Declaration: public Scoping_Declaration {
 
 class Variable: public Expression {
 		std::string name_;
+		llvm::Value *llvm_value_;
 	protected:
-		Variable(std::string name): name_ { name } { }
+		Variable(std::string name, llvm::Value *llvm_value): name_ { name }, llvm_value_ { llvm_value } { }
 	public:
 		using Ptr = std::shared_ptr<Variable>;
 		static Variable::Ptr create(
-			std::string name, Type_Declaration::Ptr type
+			std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value
 		);
 		const std::string &name() const { return name_; }
+		auto llvm_value() { return llvm_value_; }
+		void set_llvm_value(llvm::Value *llvm_value) { llvm_value_ = llvm_value; }
 };
 
 template<typename TRAIT> class Concrete_Variable: public Variable {
 		typename TRAIT::base_type value_;
-		Concrete_Variable(std::string name): Variable { name } { }
+		Concrete_Variable(std::string name, llvm::Value *llvm_value): Variable { name, llvm_value } { }
 	public:
 		using Ptr = std::shared_ptr<Concrete_Variable<TRAIT>>;
-		static auto create(std::string name) {
-			return Ptr { new Concrete_Variable<TRAIT> { name } };
+		static auto create(std::string name, llvm::Value *llvm_value) {
+			return Ptr { new Concrete_Variable<TRAIT> { name, llvm_value } };
 		}
 		std::string name() const { return name_; }
 		const auto &value() const { return value_; }
