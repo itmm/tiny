@@ -6,9 +6,12 @@ OBJECTs = $(addprefix build/,$(SOURCEs:.cpp=.o))
 
 CXXFLAGS += -g -Wall -std=c++17
 
-tests: $(APP)
+tests: $(APP) test_gcd
 	@echo "run tests"
 	./$(APP) Gcd.mod
+	./test_gcd
+
+test_gcd: gcd.c test_gcd.c
 
 include $(wildcard deps/*.dep)
 

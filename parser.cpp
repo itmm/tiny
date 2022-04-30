@@ -1,4 +1,6 @@
 #include "parser.h"
+
+#include "ll_type.h"
 #include "scope.h"
 
 void Parser::parse() {
@@ -217,16 +219,19 @@ Declaration::Ptr Parser::parse_qual_ident() {
 	return got;
 }
 
-void Parser::parse_variable_declaration() {
+std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration(bool is_var) {
 	auto ids { parse_ident_list() };
 	consume(Token_Kind::colon);
 	auto d { parse_qual_ident() };
 	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
+	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(Variable::create(n, t));
+		auto dcl = Variable_Declaration::create(Variable::create(n, t), is_var);
 		current_scope->insert(dcl);
+		result.push_back(dcl);
 	}
+	return result;
 }
 
 Declaration::Ptr Parser::parse_formal_type() {
@@ -237,25 +242,43 @@ Declaration::Ptr Parser::parse_formal_type() {
 	return parse_qual_ident();
 }
 
-void Parser::parse_fp_section() {
-	if (tok_.is(Token_Kind::kw_VAR)) { advance(); }
-	parse_variable_declaration();
+std::vector<Variable_Declaration::Ptr> Parser::parse_fp_section(Procedure_Declaration::Ptr decl) {
+	bool is_var { tok_.is(Token_Kind::kw_VAR) };
+	if (is_var) { advance(); }
+	return parse_variable_declaration(is_var);
 }
 
-void Parser::parse_formal_parameters() {
+void Parser::parse_formal_parameters(Procedure_Declaration::Ptr decl) {
 	consume(Token_Kind::l_paren);
 	if (! tok_.is_one_of(Token_Kind::r_paren, Token_Kind::eoi)) {
-		parse_fp_section();
+		auto args { parse_fp_section(decl) };
+		for (auto arg : args) {
+			decl->add_argument(arg);
+		}
 		while (tok_.is(Token_Kind::comma)) {
 			advance();
-			parse_fp_section();
+			auto args { parse_fp_section(decl) };
+			for (auto arg : args) {
+				decl->add_argument(arg);
+			}
 		}
 	}
 	consume(Token_Kind::r_paren);
 	if (tok_.is(Token_Kind::colon)) {
 		advance();
-		parse_qual_ident();
+		auto got { parse_qual_ident() };
+		auto ty { std::dynamic_pointer_cast<Type_Declaration>(got) };
+		if (! ty) { Error { got->name() + " is not a type" }; }
+		decl->set_returns(ty);
 	}
+
+	auto ll_result { get_ll_type(decl->returns(), mod_.getContext()) };
+	std::vector<llvm::Type *> ll_args;
+	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i) {
+		ll_args.push_back(get_ll_type((**i).variable()->type(), mod_.getContext()));
+	}
+	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
+	auto ft { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, decl->name(), mod_) };
 }
 
 std::string Parser::parse_procedure_heading() {
@@ -279,12 +302,12 @@ void Parser::parse_procedure_body() {
 	consume(Token_Kind::kw_END);
 }
 
-void Parser::parse_procedure_declaration() {
+Procedure_Declaration::Ptr Parser::parse_procedure_declaration() {
 	auto name { parse_procedure_heading() };
 	auto p { Procedure_Declaration::create(name) };
 	Pushed_Scope pushed { p };
 	if (tok_.is(Token_Kind::l_paren)) {
-		parse_formal_parameters();
+		parse_formal_parameters(p);
 	}
 	consume(Token_Kind::semicolon);
 	parse_procedure_body();
@@ -296,6 +319,7 @@ void Parser::parse_procedure_declaration() {
 		};
 	}
 	advance();
+	return p;
 }
 
 void Parser::parse_declaration_sequence() {
@@ -323,7 +347,7 @@ void Parser::parse_declaration_sequence() {
 			Token_Kind::eoi, Token_Kind::kw_END,
 			Token_Kind::kw_BEGIN, Token_Kind::kw_PROCEDURE
 		)) {
-			parse_variable_declaration();
+			parse_variable_declaration(false);
 			consume(Token_Kind::semicolon);
 		}
 	}

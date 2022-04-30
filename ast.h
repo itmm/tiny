@@ -6,7 +6,6 @@
 
 class Declaration {
 		const std::string name_;
-
 	protected:
 		Declaration(std::string name): name_ { name } { }
 
@@ -18,7 +17,7 @@ class Declaration {
 };
 
 class Type_Declaration: public Declaration {
-		Type_Declaration(std::string name): Declaration(name) { }
+		Type_Declaration(std::string name): Declaration { name } { }
 	public:
 		using Ptr = std::shared_ptr<Type_Declaration>;
 		static auto create(std::string name) {
@@ -129,16 +128,6 @@ class Module_Declaration: public Declaration {
 		}
 };
 
-class Procedure_Declaration: public Declaration {
-		Procedure_Declaration(std::string name): Declaration(name) { }
-	public:
-		using Ptr = std::shared_ptr<Procedure_Declaration>;
-		static auto create(std::string name) {
-
-			return Ptr { new Procedure_Declaration { name } };
-		}
-};
-
 class Variable: public Expression {
 		std::string name_;
 	protected:
@@ -173,17 +162,41 @@ using Real_Variable = Concrete_Variable<Real_Trait>;
 
 class Variable_Declaration: public Declaration {
 		Variable::Ptr variable_;
+		bool is_var_;
 
-		Variable_Declaration(Variable::Ptr variable):
-			Declaration(variable->name()), variable_ { variable }
+		Variable_Declaration(Variable::Ptr variable, bool is_var):
+			Declaration { variable->name() },
+			variable_ { variable }, is_var_ { is_var }
 		{ }
 	public:
 		using Ptr = std::shared_ptr<Variable_Declaration>;
-		static auto create(Variable::Ptr variable) {
-			return Ptr { new Variable_Declaration { variable } };
+		static auto create(Variable::Ptr variable, bool is_var) {
+			return Ptr { new Variable_Declaration { variable, is_var } };
 		}
 		auto type() { return variable_->type(); }
 		auto variable() { return variable_; }
+};
+
+class Procedure_Declaration: public Declaration {
+		Type_Declaration::Ptr returns_;
+		std::vector<Variable_Declaration::Ptr> arguments_;
+
+		Procedure_Declaration(std::string name): Declaration(name) { }
+	public:
+		using Ptr = std::shared_ptr<Procedure_Declaration>;
+		static auto create(std::string name) {
+
+			return Ptr { new Procedure_Declaration { name } };
+		}
+		auto returns() { return returns_; }
+		void set_returns(Type_Declaration::Ptr returns) {
+			returns_ = returns;
+		}
+		void add_argument(Variable_Declaration::Ptr arg) {
+			arguments_.push_back(arg);
+		}
+		auto args_begin() { return arguments_.begin(); }
+		auto args_end() { return arguments_.end(); }
 };
 
 class Const_Declaration: public Declaration {
