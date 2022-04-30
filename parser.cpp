@@ -282,8 +282,8 @@ std::string Parser::parse_procedure_heading() {
 	return name;
 }
 
-void Parser::parse_procedure_body(llvm::BasicBlock *bb) {
-	parse_declaration_sequence(bb);
+void Parser::parse_procedure_body(Procedure_Declaration::Ptr decl) {
+	parse_declaration_sequence(decl);
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
 		advance();
 		parse_statement_sequence();
@@ -295,9 +295,9 @@ void Parser::parse_procedure_body(llvm::BasicBlock *bb) {
 	consume(Token_Kind::kw_END);
 }
 
-Procedure_Declaration::Ptr Parser::parse_procedure_declaration() {
+Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declaration::Ptr parent) {
 	auto name { parse_procedure_heading() };
-	auto decl { Procedure_Declaration::create(name) };
+	auto decl { Procedure_Declaration::create(name, parent) };
 	Pushed_Scope pushed { decl };
 	if (tok_.is(Token_Kind::l_paren)) {
 		parse_formal_parameters(decl);
@@ -310,10 +310,11 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration() {
 		ll_args.push_back(get_ll_type((**i).variable()->type(), mod_.getContext()));
 	}
 	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
-	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, decl->name(), mod_) };
+	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, parent->mangle(decl->name()), mod_) };
 	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn) };
+	builder_.SetInsertPoint(entry);
 
-	parse_procedure_body(entry);
+	parse_procedure_body(decl);
 	expect(Token_Kind::identifier);
 	if (name != tok_.identifier()) {
 		throw Error {
@@ -325,7 +326,7 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration() {
 	return decl;
 }
 
-void Parser::parse_declaration_sequence(llvm::BasicBlock *bb) {
+void Parser::parse_declaration_sequence(Scoping_Declaration::Ptr parent) {
 	if (tok_.is(Token_Kind::kw_CONST)) {
 		advance();
 		while (tok_.is(Token_Kind::identifier)) {
@@ -352,13 +353,14 @@ void Parser::parse_declaration_sequence(llvm::BasicBlock *bb) {
 		)) {
 			auto vars { parse_variable_declaration(false) };
 			for (auto var : vars) {
-				new llvm::AllocaInst(get_ll_type(var->variable()->type(), mod_.getContext()), 0, var->name(), bb);
+				builder_.CreateAlloca(get_ll_type(var->variable()->type(), mod_.getContext()));
+				//new llvm::AllocaInst(get_ll_type(var->variable()->type(), mod_.getContext()), 0, var->name(), bb);
 			}
 			consume(Token_Kind::semicolon);
 		}
 	}
 	while (tok_.is(Token_Kind::kw_PROCEDURE)) {
-		parse_procedure_declaration();
+		parse_procedure_declaration(parent);
 		consume(Token_Kind::semicolon);
 	}
 }
@@ -380,10 +382,11 @@ Module_Declaration::Ptr Parser::parse_module() {
 	auto ll_result { get_ll_type(nullptr, mod_.getContext()) };
 	std::vector<llvm::Type *> ll_args;
 	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
-	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, mod->name() + "__init", mod_) };
+	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, mod->mangle("_init"), mod_) };
 	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn) };
+	builder_.SetInsertPoint(entry);
 
-	parse_declaration_sequence(entry);
+	parse_declaration_sequence(mod);
 
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
 		advance();

@@ -43,9 +43,9 @@ class Parser {
 		std::vector<Variable_Declaration::Ptr> parse_fp_section(Procedure_Declaration::Ptr decl);
 		void parse_formal_parameters(Procedure_Declaration::Ptr decl);
 		std::string parse_procedure_heading();
-		void parse_procedure_body(llvm::BasicBlock *bb);
-		Procedure_Declaration::Ptr parse_procedure_declaration();
-		void parse_declaration_sequence(llvm::BasicBlock *bb);
+		void parse_procedure_body(Procedure_Declaration::Ptr decl);
+		Procedure_Declaration::Ptr parse_procedure_declaration(Scoping_Declaration::Ptr parent);
+		void parse_declaration_sequence(Scoping_Declaration::Ptr parent);
 		Module_Declaration::Ptr parse_module();
 
 	public:

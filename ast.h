@@ -119,8 +119,20 @@ class Unary_Op: public Expression {
 		Type_Declaration::Ptr type() override;
 };
 
-class Module_Declaration: public Declaration {
-		Module_Declaration(std::string name): Declaration(name) { }
+class Scoping_Declaration: public Declaration {
+	public:
+		using Ptr = std::shared_ptr<Scoping_Declaration>;
+	private:
+		Scoping_Declaration::Ptr parent_;
+	protected:
+		Scoping_Declaration(std::string name, Scoping_Declaration::Ptr parent): Declaration { name }, parent_ { parent } { }
+	public:
+		auto parent() const { return parent_; }
+		std::string mangle(std::string name) const;
+};
+
+class Module_Declaration: public Scoping_Declaration {
+		Module_Declaration(std::string name): Scoping_Declaration(name, nullptr) { }
 	public:
 		using Ptr = std::shared_ptr<Module_Declaration>;
 		static auto create(std::string name) {
@@ -177,16 +189,16 @@ class Variable_Declaration: public Declaration {
 		auto variable() { return variable_; }
 };
 
-class Procedure_Declaration: public Declaration {
+class Procedure_Declaration: public Scoping_Declaration {
 		Type_Declaration::Ptr returns_;
 		std::vector<Variable_Declaration::Ptr> arguments_;
 
-		Procedure_Declaration(std::string name): Declaration(name) { }
+		Procedure_Declaration(std::string name, Scoping_Declaration::Ptr parent): Scoping_Declaration { name, parent } { }
 	public:
 		using Ptr = std::shared_ptr<Procedure_Declaration>;
-		static auto create(std::string name) {
+		static auto create(std::string name, Scoping_Declaration::Ptr parent) {
 
-			return Ptr { new Procedure_Declaration { name } };
+			return Ptr { new Procedure_Declaration { name, parent } };
 		}
 		auto returns() { return returns_; }
 		void set_returns(Type_Declaration::Ptr returns) {

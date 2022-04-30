@@ -280,3 +280,11 @@ Type_Declaration::Ptr Unary_Op::type() {
 	}
 	return nullptr;
 }
+
+std::string Scoping_Declaration::mangle(std::string name) const {
+	auto mangled = this->name() + "_" + name;
+	if (parent_) {
+		return parent_->mangle(mangled);
+	}
+	return mangled;
+}
