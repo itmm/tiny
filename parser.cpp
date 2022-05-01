@@ -205,6 +205,21 @@ Value::Ptr Parser::parse_term() {
 	return left;
 }
 
+Value::Ptr Parser::parse_unary_not(Value::Ptr left) {
+	auto t { left->type() };
+	if (t != boolean_type) {
+		throw Error { "wrong type for unary ~" };
+	}
+	if (auto l { std::dynamic_pointer_cast<Bool_Literal>(left) }) {
+		return Bool_Literal::create(! l->value());
+	}
+	auto r { Reference::create(gen_.next_id(), t) };
+	gen_.append(
+		r->name() + " = not " + get_ir_type(t) + " " + left->name()
+	);
+	return r;
+}
+
 Value::Ptr Parser::parse_factor() {
 	std::shared_ptr<Value> res;
 	switch(tok_.kind()) {
@@ -236,7 +251,7 @@ Value::Ptr Parser::parse_factor() {
 			advance(); break;
 		case Token_Kind::sym_not:
 			advance();
-			res = Unary_Op::create(Unary_Op::op_not, parse_expression());
+			res = parse_unary_not(parse_expression());
 			break;
 		case Token_Kind::l_paren:
 			advance();
