@@ -10,6 +10,16 @@ MODULE Gcd;
 			END;
 		RETURN x
 	END GCD;
+	PROCEDURE Min(a, b: INTEGER): INTEGER;
+		VAR r: INTEGER;
+		BEGIN
+			IF a < b THEN
+				r := a
+			ELSE
+				r := b
+			END;
+		RETURN r
+	END Min;
 	PROCEDURE Mod(a, b: INTEGER): INTEGER;
 		BEGIN
 		RETURN a MOD b

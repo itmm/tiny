@@ -24,6 +24,23 @@ while_cond_0_1:
 	%12 = load i32, i32* %2, align 4
 	ret i32 %12
 }
+define i32 @Gcd_Min(i32 %0, i32 %1) {
+entry:
+	%2 = alloca i32, align 4
+	br label %if_cond_0_0
+if_cond_0_0:
+	%3 = icmp slt i32 %0, %1
+	br i1 %3, label %if_body_0_0, label %if_cond_0_1
+if_body_0_0:
+	store i32 %0, i32* %2, align 4
+	br label %if_end_0
+if_cond_0_1:
+	store i32 %1, i32* %2, align 4
+	br label %if_end_0
+if_end_0:
+	%4 = load i32, i32* %2, align 4
+	ret i32 %4
+}
 define i32 @Gcd_Mod(i32 %0, i32 %1) {
 entry:
 	%2 = srem i32 %0, %1

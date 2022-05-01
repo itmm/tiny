@@ -237,12 +237,12 @@ Value::Ptr Binary_Op::create(
 	if (ll && lr) { return literal_bin_op(op, ll, lr); }
 
 	switch (op) {
-		case Binary_Op::mod: {
+		case Binary_Op::equal: {
 			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = srem " +
+			gen.append("%" + std::to_string(r) + " = icmp eq " +
 				get_ir_type(left->type()) + " " +
 				left->name() + ", " + right->name());
-			return Reference::create(r, integer_type);
+			return Reference::create(r, boolean_type);
 		}
 		case Binary_Op::not_equal: {
 			auto r { gen.next_id() };
@@ -251,6 +251,42 @@ Value::Ptr Binary_Op::create(
 				left->name() + ", " + right->name());
 			return Reference::create(r, boolean_type);
 		}
+		case Binary_Op::less: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp slt " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::less_equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp sle " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::greater: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp sgt " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::greater_equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp sge " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::mod: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = srem " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, integer_type);
+		}
+		default: break;
 	}
 	return Ptr { new Binary_Op { op, left, right } };
 }

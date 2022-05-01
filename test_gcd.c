@@ -1,5 +1,6 @@
 extern void Gcd__init();
 extern int Gcd_GCD(int, int);
+extern int Gcd_Min(int, int);
 
 #include <stdio.h>
 #include <assert.h>
