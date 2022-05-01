@@ -65,6 +65,29 @@ void Lexer::double_token(Token &tok, Token_Kind with_equals, Token_Kind without_
 	}
 }
 
+void Lexer::eat_comment() {
+	int nesting { 1 };
+	for (;;) {
+		switch (ch_) {
+			case '(':
+				ch_ = in_.get();
+				if (ch_ == '*') { ++nesting; }
+				break;
+			case '*':
+				ch_ = in_.get();
+				if (ch_ == ')') {
+					ch_ = in_.get();
+					if (! --nesting) { return; }
+				}
+				break;
+			case EOF: throw Error { "unclosed comment" };
+			default:
+				ch_ = in_.get();
+		}
+
+	}
+}
+
 void Lexer::next(Token &tok) {
 	while (Char_Info::is_whitespace(ch_)) {
 		if (ch_ == '\n') { ++line_; }
@@ -91,7 +114,6 @@ void Lexer::next(Token &tok) {
 		CASE('-', Token_Kind::minus);
 		CASE('*', Token_Kind::star);
 		CASE('/', Token_Kind::slash);
-		CASE('(', Token_Kind::l_paren);
 		CASE(')', Token_Kind::r_paren);
 		CASE(',', Token_Kind::comma);
 		CASE(';', Token_Kind::semicolon);
@@ -101,6 +123,14 @@ void Lexer::next(Token &tok) {
 		CASE('&', Token_Kind::sym_and);
 		CASE('~', Token_Kind::sym_not);
 		#undef CASE
+		case '(':
+			ch_ = in_.get();
+			if (ch_ == '*') {
+				eat_comment(); next(tok);
+			} else {
+				set_token(tok, '(', Token_Kind::l_paren);
+			}
+			break;
 		case ':':
 	       		double_token(
 				tok, Token_Kind::assign, Token_Kind::colon
@@ -118,8 +148,6 @@ void Lexer::next(Token &tok) {
 			);
 			break;
 		default: throw Unknown_Char_Err { static_cast<char>(ch_) };
-
-
 	}
 }
 

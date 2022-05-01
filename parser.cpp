@@ -95,7 +95,44 @@ Value::Ptr Parser::parse_binary_plus(Value::Ptr left, Value::Ptr right) {
 }
 
 Value::Ptr Parser::parse_binary_minus(Value::Ptr left, Value::Ptr right) {
-	return Binary_Op::create(Binary_Op::minus, left, right, gen_);
+	auto lt { left->type() };
+	auto rt { left->type() };
+	if (! (is_numeric(lt) && is_numeric(rt))) {
+		throw Error { "wrong type for binary -" };
+	}
+
+	if (lt == integer_type && rt == integer_type) {
+		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
+		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
+
+		if (li && ri) {
+			return Integer_Literal::create(li->value() - ri->value());
+		}
+		if (ri && ri->value() == 0) { return left; }
+
+		auto r { Reference::create(gen_.next_id(), integer_type) };
+		gen_.append(
+			r->name() + " = sub i32 " + left->name() + ", " +
+			right->name()
+		);
+		return r;
+	}
+	
+	left = { propagate_to_real(left) };
+	right = { propagate_to_real(right) };
+	auto lr { std::dynamic_pointer_cast<Real_Literal>(left) };
+	auto rr { std::dynamic_pointer_cast<Real_Literal>(right) };
+	if (lr && rr) {
+		return Real_Literal::create(lr->value() - rr->value());
+	}
+	if (rr && rr->value() == 0.0) { return left; }
+
+	auto r { Reference::create(gen_.next_id(), real_type) };
+	gen_.append(
+		r->name() + " = fsub double " + left->name() + ", " +
+		right->name()
+	);
+	return r;
 }
 
 Value::Ptr Parser::parse_simple_expression() {
@@ -343,18 +380,6 @@ void Parser::parse_statement_sequence() {
 		parse_statement();
 	}
 }
-
-void Parser::parse_if() {
-	consume(Token_Kind::kw_IF);
-	parse_expression();
-	consume(Token_Kind::kw_THEN);
-	parse_statement_sequence();
-	if (tok_.is(Token_Kind::kw_ELSE)) {
-		advance();
-		parse_statement_sequence();
-	}
-	consume(Token_Kind::kw_END);
-};
 
 std::vector<std::string> Parser::parse_ident_list() {
 	std::vector<std::string> ids;

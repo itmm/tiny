@@ -55,4 +55,5 @@ class Lexer {
 		void set_token(Token &tok, std::string raw, Token_Kind kind);
 		void set_token(Token &tok, char raw, Token_Kind kind);
 		void double_token(Token &tok, Token_Kind with_equals, Token_Kind without_equals);
+		void eat_comment();
 };

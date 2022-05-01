@@ -1,4 +1,5 @@
 MODULE Gcd;
+	(* some small tests *)
 	PROCEDURE GCD(a, b: INTEGER): INTEGER;
 		VAR x, y, t: INTEGER;
 		BEGIN

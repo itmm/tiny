@@ -35,7 +35,6 @@ class Parser {
 		Declaration::Ptr parse_designator();
 		void parse_statement();
 		void parse_statement_sequence();
-		void parse_if();
 
 		std::vector<std::string> parse_ident_list();
 		Declaration::Ptr parse_qual_ident();
