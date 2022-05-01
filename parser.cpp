@@ -3,28 +3,26 @@
 #include "ll_type.h"
 #include "scope.h"
 
-#include "llvm/IR/Constants.h"
-
 void Parser::parse() {
 	parse_module();
 	expect(Token_Kind::eoi);
 }
 
-Expression::Ptr Parser::parse_plus_minus(Expression::Ptr left) {
+Value::Ptr Parser::parse_plus_minus(Value::Ptr left) {
 	if (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
 		Binary_Op::Operator op {
 			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
 		};
 		advance();
 		auto right { parse_term() };
-		return Binary_Op::create(op, Integer_Literal::create(0), right);
+		return Binary_Op::create(op, Integer_Literal::create(0), right, gen_);
 	} else {
 		return nullptr;
 	}
 }
 
-Expression::Ptr Parser::parse_simple_expression() {
-	Expression::Ptr left { parse_plus_minus(Integer_Literal::create(0)) };
+Value::Ptr Parser::parse_simple_expression() {
+	Value::Ptr left { parse_plus_minus(Integer_Literal::create(0)) };
 	if (! left) { left = parse_term(); }
 	while (auto got { parse_plus_minus(left) }) {
 		left = got;
@@ -32,7 +30,7 @@ Expression::Ptr Parser::parse_simple_expression() {
 	return left;
 }
 
-Expression::Ptr Parser::parse_expression() {
+Value::Ptr Parser::parse_expression() {
 	auto left { parse_simple_expression() };
 	for (;;) {
 		auto op { Binary_Op::none };
@@ -48,12 +46,12 @@ Expression::Ptr Parser::parse_expression() {
 		if (op == Binary_Op::none) { break; }
 		advance();
 		auto right { parse_simple_expression() };
-		left = Binary_Op::create(op, left, right);
+		left = Binary_Op::create(op, left, right, gen_);
 	}
 	return left;
 }
 
-Expression::Ptr Parser::parse_term() {
+Value::Ptr Parser::parse_term() {
 	auto left { parse_factor() };
 	for (;;) {
 		auto op { Binary_Op::none };
@@ -66,13 +64,13 @@ Expression::Ptr Parser::parse_term() {
 		if (op == Binary_Op::none) { break; }
 		advance();
 		auto right { parse_factor() };
-		left = Binary_Op::create(op, left, right);
+		left = Binary_Op::create(op, left, right, gen_);
 	}
 	return left;
 }
 
-Expression::Ptr Parser::parse_factor() {
-	std::shared_ptr<Expression> res;
+Value::Ptr Parser::parse_factor() {
+	std::shared_ptr<Value> res;
 	switch(tok_.kind()) {
 		case Token_Kind::integer_literal:
 			res = Integer_Literal::create(std::stoi(tok_.literal_data()));
@@ -80,7 +78,15 @@ Expression::Ptr Parser::parse_factor() {
 		case Token_Kind::identifier: {
 			auto got { parse_qual_ident() };
 			if (auto var { std::dynamic_pointer_cast<Variable_Declaration>(got) }) {
-				res = var->variable();
+				if (var->variable()->with_load()) {
+					auto r { gen_.next_id() };
+					gen_.append("%" + std::to_string(r) +
+						" = load " + get_ir_type(var->variable()->type()) + ", " + get_ir_type(var->variable()->type()) + "* %" + std::to_string(var->variable()->ref()) + ", align 4");
+					res = Reference::create(r, var->variable()->type());
+					
+				} else {
+					res = Reference::create(var->variable()->ref(), var->variable()->type());
+				}
 			} else if (auto cnst { std::dynamic_pointer_cast<Const_Declaration>(got) }) {
 				res = cnst->value();
 			} else { throw Error { got->name() + " not found" }; }
@@ -111,6 +117,14 @@ Declaration::Ptr Parser::parse_designator() {
 	// TODO: selectors
 }
 
+std::string to_label(int value) {
+	return "label %" + std::to_string(value);
+}
+
+std::string def_label(int value) {
+	return std::to_string(value) + ":";
+}
+
 void Parser::parse_statement() {
 	if (tok_.is(Token_Kind::kw_IF)) {
 		advance();
@@ -132,19 +146,20 @@ void Parser::parse_statement() {
 	}
 	// TODO: case statement
 	if (tok_.is(Token_Kind::kw_WHILE)) {
-		auto cond_bb { llvm::BasicBlock::Create(mod_.getContext(), "while.cond", fn_) };
-		auto body_bb { llvm::BasicBlock::Create(mod_.getContext(), "while.body", fn_) };
-		auto after_bb { llvm::BasicBlock::Create(mod_.getContext(), "while.after", fn_) };
-		builder_.CreateBr(cond_bb);
-		builder_.SetInsertPoint(cond_bb);
+		int cond_bb { gen_.cur_id() };
+		gen_.append("br label %while_cond_" + std::to_string(cond_bb));
+		gen_.append_raw("while_cond_" + std::to_string(cond_bb) + ":");
 		advance();
-		auto cond { expr_to_value(parse_expression()) };
-		builder_.CreateCondBr(cond, body_bb, after_bb);
+		auto expr { parse_expression() };
+		gen_.append(
+			"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %while_body_" + std::to_string(cond_bb) +
+			", label %while_after_" + std::to_string(cond_bb)
+		);
 		consume(Token_Kind::kw_DO);
-		builder_.SetInsertPoint(body_bb);
+		gen_.append_raw("while_body_" + std::to_string(cond_bb) + ":");
 		parse_statement_sequence();
-		builder_.CreateBr(cond_bb);
-		builder_.SetInsertPoint(after_bb);
+		gen_.append("br label %while_cond_" + std::to_string(cond_bb));
+		gen_.append_raw("while_after_" + std::to_string(cond_bb) + ":");
 		/*
 		while (tok_.is(Token_Kind::kw_ELSIF)) {
 			advance();
@@ -174,8 +189,11 @@ void Parser::parse_statement() {
 		auto v { std::dynamic_pointer_cast<Variable_Declaration>(id) };
 		if (! v) { throw Error { v->name() + " is no variable for assignment" }; }
 		auto e { parse_expression() };
-		auto l { expr_to_value(e) };
-		builder_.CreateStore(l, v->variable()->llvm_value());
+		gen_.append(
+			"store " + get_ir_type(v->variable()->type()) + " " +
+				e->name() + ", " + get_ir_type(v->variable()->type()) +
+				"* %" + std::to_string(v->variable()->ref()) + ", align 4"
+		);
 	} else if (tok_.is(Token_Kind::l_paren)) {
 		advance();
 		if (! tok_.is(Token_Kind::r_paren)) {
@@ -244,7 +262,7 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_parameter_declaration(bool 
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(Variable::create(n, t, nullptr, false), is_var);
+		auto dcl = Variable_Declaration::create(Variable::create(n, t, false), is_var);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -259,8 +277,11 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration() {
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto v { builder_.CreateAlloca(get_ll_type(t, mod_.getContext())) };
-		auto dcl = Variable_Declaration::create(Variable::create(n, t, v, true), false);
+		auto r { gen_.next_id() };
+		gen_.append("%" + std::to_string(r) + " = alloca " + get_ir_type(t) +
+			", align 4");
+		auto dcl = Variable_Declaration::create(Variable::create(n, t, true), false);
+		dcl->variable()->set_ref(r);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -323,10 +344,10 @@ void Parser::parse_procedure_body(Procedure_Declaration::Ptr decl) {
 	}
 	if (tok_.is(Token_Kind::kw_RETURN)) {
 		advance();
-		auto ret { expr_to_value(parse_expression()) };
-		builder_.CreateRet(ret);
+		auto ret { parse_expression() };
+		gen_.append("ret " + get_ir_type(ret->type()) + " " + ret->name());
 	} else {
-		builder_.CreateRetVoid();
+		gen_.append("ret void");
 	}
 	consume(Token_Kind::kw_END);
 }
@@ -340,22 +361,23 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declarati
 	}
 	consume(Token_Kind::semicolon);
 
-	auto ll_result { get_ll_type(decl->returns(), mod_.getContext()) };
-	std::vector<llvm::Type *> ll_args;
-	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i) {
-		ll_args.push_back(get_ll_type((**i).variable()->type(), mod_.getContext()));
-	}
-	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
-	fn_ = llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, parent->mangle(decl->name()), mod_);
+	gen_.reset();
+	std::string def { "define " + get_ir_type(decl->returns()) + " @" };
+	def += parent->mangle(decl->name()) + "(";
 	int j { 0 };
 	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i, ++j) {
-		(**i).variable()->set_llvm_value(fn_->getArg(j));
+		if (j) { def += ", "; }
+		int id { gen_.next_id() };
+		def += get_ir_type((**i).variable()->type()) + " %";
+		def += std::to_string(id);
+		(**i).variable()->set_ref(id);
 	}
-
-	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn_) };
-	builder_.SetInsertPoint(entry);
+	def += ") {";
+	gen_.append_raw(def);
+	gen_.append_raw(def_label(gen_.next_id()));
 
 	parse_procedure_body(decl);
+	gen_.append_raw("}");
 	expect(Token_Kind::identifier);
 	if (name != tok_.identifier()) {
 		throw Error {
@@ -418,20 +440,15 @@ Module_Declaration::Ptr Parser::parse_module() {
 
 	parse_declaration_sequence(mod);
 
-	auto ll_result { get_ll_type(nullptr, mod_.getContext()) };
-	std::vector<llvm::Type *> ll_args;
-	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
-	fn_ = llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, mod->mangle("_init"), mod_);
-	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn_) };
-	builder_.SetInsertPoint(entry);
-
-
+	gen_.reset();
+	gen_.append_raw("define void @" + mod->mangle("_init") + "() {");
+	gen_.append_raw(def_label(gen_.next_id()));
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
 		advance();
 		parse_statement_sequence();
 	}
-
-	builder_.CreateRetVoid();
+	gen_.append("ret void");
+	gen_.append_raw("}");
 
 	consume(Token_Kind::kw_END);
 	expect(Token_Kind::identifier);
@@ -447,61 +464,4 @@ Module_Declaration::Ptr Parser::parse_module() {
 
 	return mod;
 };
-
-llvm::Value *Parser::expr_to_value(Expression::Ptr expr) {
-	if (auto v { std::dynamic_pointer_cast<Variable>(expr) }) {
-		if (v->with_load()) {
-			return builder_.CreateLoad(get_ll_type(v->type(), mod_.getContext()), v->llvm_value());
-		} else {
-			return v->llvm_value();
-		}
-	}
-	if (auto v { std::dynamic_pointer_cast<Bool_Literal>(expr) }) {
-		if (v->value()) {
-			return llvm::ConstantInt::getTrue(get_ll_type(boolean_type, mod_.getContext()));
-		} else {
-			return llvm::ConstantInt::getFalse(get_ll_type(boolean_type, mod_.getContext()));
-		}
-	}
-	if (auto v { std::dynamic_pointer_cast<Integer_Literal>(expr) }) {
-		return llvm::ConstantInt::get(get_ll_type(integer_type, mod_.getContext()), v->value());
-	}
-	if (auto v { std::dynamic_pointer_cast<Real_Literal>(expr) }) {
-		return llvm::ConstantFP::get(get_ll_type(real_type, mod_.getContext()), v->value());
-	}
-	if (auto v { std::dynamic_pointer_cast<Binary_Op>(expr) }) {
-		auto left { expr_to_value(v->left()) };
-		auto right { expr_to_value(v->right()) };
-		switch (v->op()) {
-		       	case Binary_Op::plus:
-				return builder_.CreateAdd(left, right);
-			case Binary_Op::minus:
-				return builder_.CreateSub(left, right);
-			case Binary_Op::mul:
-				return builder_.CreateMul(left, right);
-			case Binary_Op::div:
-				return builder_.CreateSDiv(left, right);
-			case Binary_Op::equal:
-				return builder_.CreateICmpEQ(left, right);
-			case Binary_Op::not_equal:
-				return builder_.CreateICmpNE(left, right);
-			case Binary_Op::less:
-				return builder_.CreateICmpSLT(left, right);
-			case Binary_Op::less_equal:
-				return builder_.CreateICmpSLE(left, right);
-			case Binary_Op::greater:
-				return builder_.CreateICmpSGT(left, right);
-			case Binary_Op::greater_equal:
-				return builder_.CreateICmpSGE(left, right);
-			case Binary_Op::mod:
-				return builder_.CreateSRem(left, right);
-			case Binary_Op::op_and:
-				return builder_.CreateAnd(left, right);
-			case Binary_Op::op_or:
-				return builder_.CreateOr(left, right);
-			default: throw Error { "unknown binary" };
-		}
-	}
-	throw Error { "no value" };
-}
 

@@ -2,16 +2,13 @@
 
 #include "ast.h"
 #include "err.h"
+#include "gen.h"
 #include "lexer.h"
-
-#include "llvm/IR/IRBuilder.h"
 
 class Parser {
 		Lexer &lexer_;
-		llvm::Module &mod_;
-		llvm::IRBuilder<> &builder_;
-		llvm::Function *fn_;
 		Token tok_;
+		Gen gen_;
 
 		void error() {
 			throw Error { "Unexpected: '" + tok_.raw() + "'\n" };
@@ -27,13 +24,11 @@ class Parser {
 			expect(k); advance();
 		}
 
-		llvm::Value *expr_to_value(Expression::Ptr exp);
-
-		Expression::Ptr parse_expression();
-		Expression::Ptr parse_plus_minus(Expression::Ptr left);
-		Expression::Ptr parse_simple_expression();
-		Expression::Ptr parse_term();
-		Expression::Ptr parse_factor();
+		Value::Ptr parse_expression();
+		Value::Ptr parse_plus_minus(Value::Ptr left);
+		Value::Ptr parse_simple_expression();
+		Value::Ptr parse_term();
+		Value::Ptr parse_factor();
 		Declaration::Ptr parse_designator();
 		void parse_statement();
 		void parse_statement_sequence();
@@ -53,7 +48,7 @@ class Parser {
 		Module_Declaration::Ptr parse_module();
 
 	public:
-		Parser(Lexer &lexer, llvm::Module &mod, llvm::IRBuilder<> &builder): lexer_ { lexer }, mod_ { mod }, builder_ { builder } { advance(); }
+		Parser(Lexer &lexer): lexer_ { lexer } { advance(); }
 
 		void parse();
 };

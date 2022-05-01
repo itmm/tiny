@@ -1,10 +1,10 @@
 #pragma once
 
+#include "gen.h"
+
 #include <string>
 #include <memory>
 #include <vector>
-
-#include "llvm/IR/Value.h"
 
 class Declaration {
 		const std::string name_;
@@ -31,14 +31,15 @@ extern Type_Declaration::Ptr boolean_type;
 extern Type_Declaration::Ptr integer_type;
 extern Type_Declaration::Ptr real_type;
 
-class Expression {
+class Value {
 	public:
-		using Ptr = std::shared_ptr<Expression>;
-		virtual ~Expression() { }
+		using Ptr = std::shared_ptr<Value>;
+		virtual ~Value() { }
 		virtual Type_Declaration::Ptr type() = 0;
+		virtual std::string name() { return "??"; }
 };
 
-class Literal: public Expression { };
+class Literal: public Value { };
 
 template<typename TRAIT> class Concrete_Literal: public Literal {
 		typename TRAIT::base_type value_;
@@ -52,6 +53,7 @@ template<typename TRAIT> class Concrete_Literal: public Literal {
 			return TRAIT::oberon_type;
 		}
 		auto value() const { return value_; }
+		std::string name() override { return std::to_string(value_); }
 };
 
 struct Bool_Trait {
@@ -75,7 +77,25 @@ struct Real_Trait {
 
 using Real_Literal = Concrete_Literal<Real_Trait>;
 
-class Binary_Op: public Expression {
+class Reference: public Value {
+		int index_;
+		Type_Declaration::Ptr type_;
+
+		Reference(int index, Type_Declaration::Ptr type):
+			index_ { index }, type_ { type }
+		{ }
+	public:
+		using Ptr = std::shared_ptr<Reference>;
+		static auto create(int index, Type_Declaration::Ptr type) {
+			return Ptr { new Reference { index, type } };
+		}
+		auto index() const { return index_; }
+		Type_Declaration::Ptr type() override { return type_; }
+
+		std::string name() override;
+};
+
+class Binary_Op: public Value {
 	public:
 		enum Operator {
 		       	none, plus, minus, mul, div, equal, not_equal,
@@ -83,18 +103,19 @@ class Binary_Op: public Expression {
 			op_and, op_or
 		};
 	private:
-		Expression::Ptr left_;
-		Expression::Ptr right_;
+		Value::Ptr left_;
+		Value::Ptr right_;
 		Operator op_;
 		Binary_Op(
-			Operator op, Expression::Ptr left, Expression::Ptr right
+			Operator op, Value::Ptr left, Value::Ptr right
 		):
 			left_ { left }, right_ { right }, op_ { op }
 		{ }
 	public:
 		using Ptr = std::shared_ptr<Binary_Op>;
-		static Expression::Ptr create(
-			Operator op, Expression::Ptr left, Expression::Ptr right
+		static Value::Ptr create(
+			Operator op, Value::Ptr left, Value::Ptr right,
+			Gen &gen
 		);
 		auto left() const { return left_; }
 		auto right() const { return right_; }
@@ -102,19 +123,19 @@ class Binary_Op: public Expression {
 		Type_Declaration::Ptr type() override;
 };
 
-class Unary_Op: public Expression {
+class Unary_Op: public Value {
 	public:
 		enum Operator { none, op_not };
 	private:
-		Expression::Ptr arg_;
+		Value::Ptr arg_;
 		Operator op_;
 		Unary_Op(
-			Operator op, Expression::Ptr arg
+			Operator op, Value::Ptr arg
 		): arg_ { arg }, op_ { op } { }
 	public:
 		using Ptr = std::shared_ptr<Unary_Op>;
-		static Expression::Ptr create(
-			Operator op, Expression::Ptr arg
+		static Value::Ptr create(
+			Operator op, Value::Ptr arg
 		);
 		auto arg() const { return arg_; }
 		auto op() const { return op_; }
@@ -142,30 +163,30 @@ class Module_Declaration: public Scoping_Declaration {
 		}
 };
 
-class Variable: public Expression {
+class Variable: public Value {
 		std::string name_;
-		llvm::Value *llvm_value_;
+		int ref_;
 		bool with_load_;
 	protected:
-		Variable(std::string name, llvm::Value *llvm_value, bool with_load): name_ { name }, llvm_value_ { llvm_value }, with_load_ { with_load } { }
+		Variable(std::string name, bool with_load): name_ { name }, with_load_ { with_load } { }
 	public:
 		using Ptr = std::shared_ptr<Variable>;
 		static Variable::Ptr create(
-			std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value, bool with_load
+			std::string name, Type_Declaration::Ptr type, bool with_load
 		);
 		const std::string &name() const { return name_; }
-		auto llvm_value() { return llvm_value_; }
-		void set_llvm_value(llvm::Value *llvm_value) { llvm_value_ = llvm_value; }
+		void set_ref(int ref) { ref_ = ref; }
+		auto ref() { return ref_; }
 		bool with_load() { return with_load_; }
 };
 
 template<typename TRAIT> class Concrete_Variable: public Variable {
 		typename TRAIT::base_type value_;
-		Concrete_Variable(std::string name, llvm::Value *llvm_value, bool with_load): Variable { name, llvm_value, with_load } { }
+		Concrete_Variable(std::string name, bool with_load): Variable { name, with_load } { }
 	public:
 		using Ptr = std::shared_ptr<Concrete_Variable<TRAIT>>;
-		static auto create(std::string name, llvm::Value *llvm_value, bool with_load) {
-			return Ptr { new Concrete_Variable<TRAIT> { name, llvm_value, with_load } };
+		static auto create(std::string name, bool with_load) {
+			return Ptr { new Concrete_Variable<TRAIT> { name, with_load } };
 		}
 		std::string name() const { return name_; }
 		const auto &value() const { return value_; }

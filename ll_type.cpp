@@ -2,17 +2,15 @@
 
 #include "err.h"
 
-#include "llvm/IR/DerivedTypes.h"
-
-llvm::Type *get_ll_type(Type_Declaration::Ptr ty, llvm::LLVMContext &ctx) {
+std::string get_ir_type(Type_Declaration::Ptr ty) {
 	if (! ty) {
-		return llvm::Type::getVoidTy(ctx);
+		return "void";
 	} else if (ty == integer_type) {
-		return llvm::Type::getInt32Ty(ctx);
+		return "i32";
 	} else if (ty == real_type) {
-		return llvm::Type::getDoubleTy(ctx);
+		throw Error { "REAL not implemented" };
 	} else if (ty == boolean_type) {
-		return llvm::Type::getInt1Ty(ctx);
+		return "i1";
 	}
 	throw Error { "no low level type for '" + ty->name() + "'" };
 }

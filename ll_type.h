@@ -2,7 +2,6 @@
 
 #include "ast.h"
 
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Type.h"
+#include <string>
 
-llvm::Type *get_ll_type(Type_Declaration::Ptr ty, llvm::LLVMContext &ctx);
+std::string get_ir_type(Type_Declaration::Ptr ty);

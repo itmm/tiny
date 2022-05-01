@@ -18,11 +18,11 @@ include $(wildcard deps/*.dep)
 build/%.o: %.cpp
 	@echo "c++ $@"
 	@mkdir -p build deps
-	@$(CXX) $(CXXFLAGS) -I`llvm-config --includedir` -c $(notdir $(@:.o=.cpp)) -o $@ -MMD -MF deps/$(notdir $(@:.o=.dep))
+	@$(CXX) $(CXXFLAGS) -c $(notdir $(@:.o=.cpp)) -o $@ -MMD -MF deps/$(notdir $(@:.o=.dep))
 
 $(APP): $(OBJECTs)
 	@echo "link $@"
-	@$(CXX) $(CXXFLAGS) $^ -o $@ `llvm-config --libs support`
+	@$(CXX) $(CXXFLAGS) $^ -o $@
 
 clean:
 	@echo "clean"

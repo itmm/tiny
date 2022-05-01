@@ -1,6 +1,7 @@
 #include "ast.h"
 
 #include "err.h"
+#include "ll_type.h"
 
 Type_Declaration::Ptr boolean_type = Type_Declaration::create("BOOLEAN");
 Type_Declaration::Ptr integer_type = Type_Declaration::create("INTEGER");
@@ -10,17 +11,21 @@ Type_Declaration::Ptr Bool_Trait::oberon_type = boolean_type;
 Type_Declaration::Ptr Integer_Trait::oberon_type = integer_type;
 Type_Declaration::Ptr Real_Trait::oberon_type = real_type;
 
-Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value, bool with_load) {
+std::string Reference::name() {
+	return "%" + std::to_string(index_);
+};
+
+Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type, bool with_load) {
 	if (! type) { throw Error { "no type in creation of '" + name + "'" }; }
 	if (type == integer_type) {
-		return Integer_Variable::create(name, llvm_value, with_load);
+		return Integer_Variable::create(name, with_load);
 	} else if (type == boolean_type) {
-		return Bool_Variable::create(name, llvm_value, with_load);
+		return Bool_Variable::create(name, with_load);
 	}
 	throw Error { "can't create variable from " + type->name() };
 }
 
-template<typename RESULT, typename ARGS, typename FN> Expression::Ptr apply_casted(
+template<typename RESULT, typename ARGS, typename FN> Value::Ptr apply_casted(
 	Literal::Ptr left, Literal::Ptr right, FN fn
 ) {
 	if (auto cl { std::dynamic_pointer_cast<ARGS>(left) }) {
@@ -183,7 +188,7 @@ struct Mul {
 	double operator()(double a, double b) { return a * b; }
 };
 
-static Expression::Ptr literal_bin_op(
+static Value::Ptr literal_bin_op(
 	Binary_Op::Operator op, Literal::Ptr left, Literal::Ptr right
 ) {
 	if (op == Binary_Op::equal) {
@@ -224,16 +229,30 @@ static Expression::Ptr literal_bin_op(
 	throw Error { "not implemented yet" };
 }
 
-Expression::Ptr Binary_Op::create(
-	Operator op, Expression::Ptr left, Expression::Ptr right
+Value::Ptr Binary_Op::create(
+	Operator op, Value::Ptr left, Value::Ptr right, Gen &gen
 ) {
 	auto ll { std::dynamic_pointer_cast<Literal>(left) };
 	auto lr { std::dynamic_pointer_cast<Literal>(right) };
-	if (ll && lr) {
-		return literal_bin_op(op, ll, lr);
-	} else {
-		return Ptr { new Binary_Op { op, left, right } };
+	if (ll && lr) { return literal_bin_op(op, ll, lr); }
+
+	switch (op) {
+		case Binary_Op::mod: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = srem " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, integer_type);
+		}
+		case Binary_Op::not_equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp ne " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
 	}
+	return Ptr { new Binary_Op { op, left, right } };
 }
 
 Type_Declaration::Ptr Binary_Op::type() {
@@ -266,7 +285,7 @@ Type_Declaration::Ptr Binary_Op::type() {
 	return nullptr;
 }
 
-Expression::Ptr Unary_Op::create(Operator op, Expression::Ptr arg) {
+Value::Ptr Unary_Op::create(Operator op, Value::Ptr arg) {
 	if (op == Operator::op_not) {
 		auto ba { std::dynamic_pointer_cast<Bool_Literal>(arg) };
 		if (ba) { return Bool_Literal::create(! ba->value()); }
