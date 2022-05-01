@@ -10,12 +10,12 @@ Type_Declaration::Ptr Bool_Trait::oberon_type = boolean_type;
 Type_Declaration::Ptr Integer_Trait::oberon_type = integer_type;
 Type_Declaration::Ptr Real_Trait::oberon_type = real_type;
 
-Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value) {
+Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value, bool with_load) {
 	if (! type) { throw Error { "no type in creation of '" + name + "'" }; }
 	if (type == integer_type) {
-		return Integer_Variable::create(name, llvm_value);
+		return Integer_Variable::create(name, llvm_value, with_load);
 	} else if (type == boolean_type) {
-		return Bool_Variable::create(name, llvm_value);
+		return Bool_Variable::create(name, llvm_value, with_load);
 	}
 	throw Error { "can't create variable from " + type->name() };
 }

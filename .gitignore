@@ -2,3 +2,4 @@ build
 deps
 tiny
 test_gcd
+*.o

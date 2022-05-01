@@ -145,25 +145,27 @@ class Module_Declaration: public Scoping_Declaration {
 class Variable: public Expression {
 		std::string name_;
 		llvm::Value *llvm_value_;
+		bool with_load_;
 	protected:
-		Variable(std::string name, llvm::Value *llvm_value): name_ { name }, llvm_value_ { llvm_value } { }
+		Variable(std::string name, llvm::Value *llvm_value, bool with_load): name_ { name }, llvm_value_ { llvm_value }, with_load_ { with_load } { }
 	public:
 		using Ptr = std::shared_ptr<Variable>;
 		static Variable::Ptr create(
-			std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value
+			std::string name, Type_Declaration::Ptr type, llvm::Value *llvm_value, bool with_load
 		);
 		const std::string &name() const { return name_; }
 		auto llvm_value() { return llvm_value_; }
 		void set_llvm_value(llvm::Value *llvm_value) { llvm_value_ = llvm_value; }
+		bool with_load() { return with_load_; }
 };
 
 template<typename TRAIT> class Concrete_Variable: public Variable {
 		typename TRAIT::base_type value_;
-		Concrete_Variable(std::string name, llvm::Value *llvm_value): Variable { name, llvm_value } { }
+		Concrete_Variable(std::string name, llvm::Value *llvm_value, bool with_load): Variable { name, llvm_value, with_load } { }
 	public:
 		using Ptr = std::shared_ptr<Concrete_Variable<TRAIT>>;
-		static auto create(std::string name, llvm::Value *llvm_value) {
-			return Ptr { new Concrete_Variable<TRAIT> { name, llvm_value } };
+		static auto create(std::string name, llvm::Value *llvm_value, bool with_load) {
+			return Ptr { new Concrete_Variable<TRAIT> { name, llvm_value, with_load } };
 		}
 		std::string name() const { return name_; }
 		const auto &value() const { return value_; }

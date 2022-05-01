@@ -1,13 +1,13 @@
 MODULE Gcd;
-	CONST three = 3;
 	PROCEDURE GCD(a, b: INTEGER): INTEGER;
-		VAR t: INTEGER;
+		VAR x, y, t: INTEGER;
 		BEGIN
-			WHILE b # -three + three DO
-				t := a MOD b;
-				a := b;
-				b := t
+			x := a; y := b;
+			WHILE y # 0 DO
+				t := x MOD y;
+				x := y;
+				y := t
 			END;
-			RETURN a
+			RETURN x
 		END GCD;
 END Gcd.

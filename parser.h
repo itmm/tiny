@@ -10,6 +10,7 @@ class Parser {
 		Lexer &lexer_;
 		llvm::Module &mod_;
 		llvm::IRBuilder<> &builder_;
+		llvm::Function *fn_;
 		Token tok_;
 
 		void error() {

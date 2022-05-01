@@ -132,16 +132,27 @@ void Parser::parse_statement() {
 	}
 	// TODO: case statement
 	if (tok_.is(Token_Kind::kw_WHILE)) {
+		auto cond_bb { llvm::BasicBlock::Create(mod_.getContext(), "while.cond", fn_) };
+		auto body_bb { llvm::BasicBlock::Create(mod_.getContext(), "while.body", fn_) };
+		auto after_bb { llvm::BasicBlock::Create(mod_.getContext(), "while.after", fn_) };
+		builder_.CreateBr(cond_bb);
+		builder_.SetInsertPoint(cond_bb);
 		advance();
-		parse_expression();
+		auto cond { expr_to_value(parse_expression()) };
+		builder_.CreateCondBr(cond, body_bb, after_bb);
 		consume(Token_Kind::kw_DO);
+		builder_.SetInsertPoint(body_bb);
 		parse_statement_sequence();
+		builder_.CreateBr(cond_bb);
+		builder_.SetInsertPoint(after_bb);
+		/*
 		while (tok_.is(Token_Kind::kw_ELSIF)) {
 			advance();
 			parse_expression();
 			consume(Token_Kind::kw_DO);
 			parse_statement_sequence();
 		}
+		*/
 		consume(Token_Kind::kw_END);
 		return;
 	}
@@ -164,7 +175,7 @@ void Parser::parse_statement() {
 		if (! v) { throw Error { v->name() + " is no variable for assignment" }; }
 		auto e { parse_expression() };
 		auto l { expr_to_value(e) };
-		builder_.CreateStore(v->variable()->llvm_value(), l);
+		builder_.CreateStore(l, v->variable()->llvm_value());
 	} else if (tok_.is(Token_Kind::l_paren)) {
 		advance();
 		if (! tok_.is(Token_Kind::r_paren)) {
@@ -233,7 +244,7 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_parameter_declaration(bool 
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(Variable::create(n, t, nullptr), is_var);
+		auto dcl = Variable_Declaration::create(Variable::create(n, t, nullptr, false), is_var);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -249,7 +260,7 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration() {
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
 		auto v { builder_.CreateAlloca(get_ll_type(t, mod_.getContext())) };
-		auto dcl = Variable_Declaration::create(Variable::create(n, t, v), false);
+		auto dcl = Variable_Declaration::create(Variable::create(n, t, v, true), false);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -312,7 +323,10 @@ void Parser::parse_procedure_body(Procedure_Declaration::Ptr decl) {
 	}
 	if (tok_.is(Token_Kind::kw_RETURN)) {
 		advance();
-		parse_expression();
+		auto ret { expr_to_value(parse_expression()) };
+		builder_.CreateRet(ret);
+	} else {
+		builder_.CreateRetVoid();
 	}
 	consume(Token_Kind::kw_END);
 }
@@ -332,13 +346,13 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declarati
 		ll_args.push_back(get_ll_type((**i).variable()->type(), mod_.getContext()));
 	}
 	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
-	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, parent->mangle(decl->name()), mod_) };
+	fn_ = llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, parent->mangle(decl->name()), mod_);
 	int j { 0 };
 	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i, ++j) {
-		(**i).variable()->set_llvm_value(fn->getArg(j));
+		(**i).variable()->set_llvm_value(fn_->getArg(j));
 	}
 
-	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn) };
+	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn_) };
 	builder_.SetInsertPoint(entry);
 
 	parse_procedure_body(decl);
@@ -402,19 +416,22 @@ Module_Declaration::Ptr Parser::parse_module() {
 		throw Error { "IMPORT not implemented" }; // TODO
 	}
 
+	parse_declaration_sequence(mod);
+
 	auto ll_result { get_ll_type(nullptr, mod_.getContext()) };
 	std::vector<llvm::Type *> ll_args;
 	auto fty { llvm::FunctionType::get(ll_result, ll_args, false) };
-	auto fn { llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, mod->mangle("_init"), mod_) };
-	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn) };
+	fn_ = llvm::Function::Create(fty, llvm::GlobalValue::ExternalLinkage, mod->mangle("_init"), mod_);
+	auto entry { llvm::BasicBlock::Create(mod_.getContext(), "entry", fn_) };
 	builder_.SetInsertPoint(entry);
 
-	parse_declaration_sequence(mod);
 
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
 		advance();
 		parse_statement_sequence();
 	}
+
+	builder_.CreateRetVoid();
 
 	consume(Token_Kind::kw_END);
 	expect(Token_Kind::identifier);
@@ -433,7 +450,11 @@ Module_Declaration::Ptr Parser::parse_module() {
 
 llvm::Value *Parser::expr_to_value(Expression::Ptr expr) {
 	if (auto v { std::dynamic_pointer_cast<Variable>(expr) }) {
-		return v->llvm_value();
+		if (v->with_load()) {
+			return builder_.CreateLoad(get_ll_type(v->type(), mod_.getContext()), v->llvm_value());
+		} else {
+			return v->llvm_value();
+		}
 	}
 	if (auto v { std::dynamic_pointer_cast<Bool_Literal>(expr) }) {
 		if (v->value()) {
