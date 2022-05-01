@@ -374,7 +374,7 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declarati
 	}
 	def += ") {";
 	gen_.append_raw(def);
-	gen_.append_raw(def_label(gen_.next_id()));
+	gen_.append_raw("entry:");
 
 	parse_procedure_body(decl);
 	gen_.append_raw("}");
@@ -442,7 +442,7 @@ Module_Declaration::Ptr Parser::parse_module() {
 
 	gen_.reset();
 	gen_.append_raw("define void @" + mod->mangle("_init") + "() {");
-	gen_.append_raw(def_label(gen_.next_id()));
+	gen_.append_raw("entry:");
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
 		advance();
 		parse_statement_sequence();

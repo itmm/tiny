@@ -8,6 +8,10 @@ MODULE Gcd;
 				x := y;
 				y := t
 			END;
-			RETURN x
-		END GCD;
+		RETURN x
+	END GCD;
+	PROCEDURE Mod(a, b: INTEGER): INTEGER;
+		BEGIN
+		RETURN a MOD b
+	END Mod;
 END Gcd.
