@@ -323,21 +323,6 @@ Type_Declaration::Ptr Binary_Op::type() {
 	return nullptr;
 }
 
-Value::Ptr Unary_Op::create(Operator op, Value::Ptr arg) {
-	if (op == Operator::op_not) {
-		auto ba { std::dynamic_pointer_cast<Bool_Literal>(arg) };
-		if (ba) { return Bool_Literal::create(! ba->value()); }
-	}
-	return Ptr { new Unary_Op { op, arg } };
-}
-
-Type_Declaration::Ptr Unary_Op::type() {
-	if (op() == Operator::op_not) {
-		return boolean_type;
-	}
-	return nullptr;
-}
-
 std::string Scoping_Declaration::mangle(std::string name) const {
 	auto mangled = this->name() + "_" + name;
 	if (parent_) {

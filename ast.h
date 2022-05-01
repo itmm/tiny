@@ -123,25 +123,6 @@ class Binary_Op: public Value {
 		Type_Declaration::Ptr type() override;
 };
 
-class Unary_Op: public Value {
-	public:
-		enum Operator { none, op_not };
-	private:
-		Value::Ptr arg_;
-		Operator op_;
-		Unary_Op(
-			Operator op, Value::Ptr arg
-		): arg_ { arg }, op_ { op } { }
-	public:
-		using Ptr = std::shared_ptr<Unary_Op>;
-		static Value::Ptr create(
-			Operator op, Value::Ptr arg
-		);
-		auto arg() const { return arg_; }
-		auto op() const { return op_; }
-		Type_Declaration::Ptr type() override;
-};
-
 class Scoping_Declaration: public Declaration {
 	public:
 		using Ptr = std::shared_ptr<Scoping_Declaration>;
