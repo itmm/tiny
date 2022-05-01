@@ -48,7 +48,7 @@ entry:
 }
 define double @Gcd_Summ(double %0, double %1) {
 entry:
-	%2 = add double %0, %1
+	%2 = fadd double %0, %1
 	ret double %2
 }
 define i32 @Gcd_Mod(i32 %0, i32 %1) {

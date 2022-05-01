@@ -88,7 +88,7 @@ Value::Ptr Parser::parse_binary_plus(Value::Ptr left, Value::Ptr right) {
 
 	auto r { Reference::create(gen_.next_id(), real_type) };
 	gen_.append(
-		r->name() + " = add double " + left->name() + ", " +
+		r->name() + " = fadd double " + left->name() + ", " +
 		right->name()
 	);
 	return r;
