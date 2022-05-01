@@ -175,16 +175,6 @@ struct Greater_Or_Equal {
 	bool operator()(double a, double b) { return a >= b; }
 };
 
-struct Add {
-	int operator()(int a, int b) { return a + b; }
-	double operator()(double a, double b) { return a + b; }
-};
-
-struct Sub {
-	int operator()(int a, int b) { return a - b; }
-	double operator()(double a, double b) { return a - b; }
-};
-
 struct Mul {
 	int operator()(int a, int b) { return a * b; }
 	double operator()(double a, double b) { return a * b; }
@@ -205,10 +195,6 @@ static Value::Ptr literal_bin_op(
 		return literal_num_relation(left, right, Greater { });
 	} else if (op == Binary_Op::greater_equal) {
 		return literal_num_relation(left, right, Greater_Or_Equal { });
-	} else if (op == Binary_Op::plus) {
-		return literal_bin_numeric(left, right, Add { });
-	} else if (op == Binary_Op::minus) {
-		return literal_bin_numeric(left, right, Sub { });
 	} else if (op == Binary_Op::mul) {
 		return literal_bin_numeric(left, right, Mul { });
 	} else if (op == Binary_Op::div) {
