@@ -21,6 +21,8 @@ Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type, boo
 		return Integer_Variable::create(name, with_load);
 	} else if (type == boolean_type) {
 		return Bool_Variable::create(name, with_load);
+	} else if (type == real_type) {
+		return Real_Variable::create(name, with_load);
 	}
 	throw Error { "can't create variable from " + type->name() };
 }

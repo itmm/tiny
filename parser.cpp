@@ -8,26 +8,125 @@ void Parser::parse() {
 	expect(Token_Kind::eoi);
 }
 
-Value::Ptr Parser::parse_plus_minus(Value::Ptr left) {
-	if (tok_.is_one_of(Token_Kind::plus, Token_Kind::minus)) {
-		Binary_Op::Operator op {
-			tok_.is(Token_Kind::plus) ? Binary_Op::plus : Binary_Op::minus
-		};
-		advance();
-		auto right { parse_term() };
-		return Binary_Op::create(op, Integer_Literal::create(0), right, gen_);
-	} else {
-		return nullptr;
+bool is_numeric(Type_Declaration::Ptr t) {
+	return t == integer_type || t == real_type;
+}
+
+Value::Ptr Parser::parse_unary_plus(Value::Ptr left) {
+	auto t { left->type() };
+	if (! is_numeric(t)) {
+		throw Error { "wrong type for unary +" };
 	}
+
+	return left;
+}
+
+Value::Ptr Parser::parse_unary_minus(Value::Ptr left) {
+	auto t { left->type() };
+	if (! is_numeric(t)) {
+		throw Error { "wrong type for unary -" };
+	}
+	if (auto l { std::dynamic_pointer_cast<Integer_Literal>(left) }) {
+		return Integer_Literal::create(-l->value());
+	}
+	if (auto l { std::dynamic_pointer_cast<Real_Literal>(left) }) {
+		return Real_Literal::create(-l->value());
+	}
+	
+	auto r { Reference::create(gen_.next_id(), t) };
+	gen_.append(
+		r->name() + " = neg " + get_ir_type(t) + " " + left->name()
+	);
+	return r;
+}
+
+Value::Ptr propagate_to_real(Value::Ptr v) {
+	if (v->type() == real_type) { return v; }
+	if (v->type() != integer_type) {
+		throw Error { "cannot promote type to REAL" };
+	}
+	if (auto i { std::dynamic_pointer_cast<Integer_Literal>(v) }) {
+		return Real_Literal::create(i->value());
+	}
+	throw Error { "cannot cast integer to REAL" }; // TODO
+}
+
+Value::Ptr Parser::parse_binary_plus(Value::Ptr left, Value::Ptr right) {
+	auto lt { left->type() };
+	auto rt { left->type() };
+	if (! (is_numeric(lt) && is_numeric(rt))) {
+		throw Error { "wrong type for binary +" };
+	}
+
+	if (lt == integer_type && rt == integer_type) {
+		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
+		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
+
+		if (li && ri) {
+			return Integer_Literal::create(li->value() + ri->value());
+		}
+		if (li && li->value() == 0) { return right; }
+		if (ri && ri->value() == 0) { return left; }
+
+		auto r { Reference::create(gen_.next_id(), integer_type) };
+		gen_.append(
+			r->name() + " = add i32 " + left->name() + ", " +
+			right->name()
+		);
+		return r;
+	}
+	
+	left = { propagate_to_real(left) };
+	right = { propagate_to_real(right) };
+	auto lr { std::dynamic_pointer_cast<Real_Literal>(left) };
+	auto rr { std::dynamic_pointer_cast<Real_Literal>(right) };
+	if (lr && rr) {
+		return Real_Literal::create(lr->value() + rr->value());
+	}
+	if (lr && lr->value() == 0.0) { return right; }
+	if (rr && rr->value() == 0.0) { return left; }
+
+	auto r { Reference::create(gen_.next_id(), real_type) };
+	gen_.append(
+		r->name() + " = add double " + left->name() + ", " +
+		right->name()
+	);
+	return r;
+}
+
+Value::Ptr Parser::parse_binary_minus(Value::Ptr left, Value::Ptr right) {
+	return Binary_Op::create(Binary_Op::minus, left, right, gen_);
 }
 
 Value::Ptr Parser::parse_simple_expression() {
-	Value::Ptr left { parse_plus_minus(Integer_Literal::create(0)) };
-	if (! left) { left = parse_term(); }
-	while (auto got { parse_plus_minus(left) }) {
-		left = got;
+	Value::Ptr left;
+	switch (tok_.kind()) {
+		case Token_Kind::plus:
+			advance();
+			left = parse_unary_plus(parse_term());
+			break;
+		case Token_Kind::minus:
+			advance();
+			left = parse_unary_minus(parse_term());
+			break;
+		default:
+			left = parse_term();
 	}
-	return left;
+
+	if (! left) { left = parse_term(); }
+	for (;;) {
+		switch (tok_.kind()) {
+			case Token_Kind::plus:
+				advance();
+				left = parse_binary_plus(left, parse_term());
+				break;
+			case Token_Kind::minus:
+				advance();
+				left = parse_binary_minus(left, parse_term());
+				break;
+			default: return left;
+		}
+	}
 }
 
 Value::Ptr Parser::parse_expression() {

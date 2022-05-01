@@ -8,7 +8,7 @@ std::string get_ir_type(Type_Declaration::Ptr ty) {
 	} else if (ty == integer_type) {
 		return "i32";
 	} else if (ty == real_type) {
-		throw Error { "REAL not implemented" };
+		return "double";
 	} else if (ty == boolean_type) {
 		return "i1";
 	}

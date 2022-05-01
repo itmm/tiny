@@ -20,6 +20,14 @@ MODULE Gcd;
 			END;
 		RETURN r
 	END Min;
+	PROCEDURE Sum(a, b: INTEGER): INTEGER;
+		BEGIN
+		RETURN a + b
+	END Sum;
+	PROCEDURE Summ(a, b: REAL): REAL;
+		BEGIN
+		RETURN a + b
+	END Summ;
 	PROCEDURE Mod(a, b: INTEGER): INTEGER;
 		BEGIN
 		RETURN a MOD b

@@ -8,6 +8,7 @@ class Initial_Scope: public Scope {
 		Initial_Scope(): Scope { nullptr } {
 			insert(integer_type);
 			insert(boolean_type);
+			insert(real_type);
 		}
 };
 

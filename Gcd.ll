@@ -41,6 +41,16 @@ if_end_0:
 	%4 = load i32, i32* %2, align 4
 	ret i32 %4
 }
+define i32 @Gcd_Sum(i32 %0, i32 %1) {
+entry:
+	%2 = add i32 %0, %1
+	ret i32 %2
+}
+define double @Gcd_Summ(double %0, double %1) {
+entry:
+	%2 = add double %0, %1
+	ret double %2
+}
 define i32 @Gcd_Mod(i32 %0, i32 %1) {
 entry:
 	%2 = srem i32 %0, %1
