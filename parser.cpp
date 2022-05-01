@@ -127,47 +127,76 @@ std::string def_label(int value) {
 
 void Parser::parse_statement() {
 	if (tok_.is(Token_Kind::kw_IF)) {
+		int id { gen_.next_if_id() };
+		int alt { 0 };
+		gen_.append("br label %if_cond_" + std::to_string(id) + "_" + std::to_string(alt));
+		gen_.append_raw("if_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
 		advance();
-		parse_expression();
+		auto expr { parse_expression() };
+		gen_.append(
+			"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %if_body_" + std::to_string(id) + "_" + std::to_string(alt) +
+			", label %if_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+		);
+		gen_.append_raw("if_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		++alt;
 		consume(Token_Kind::kw_THEN);
 		parse_statement_sequence();
+		gen_.append("br label %if_end_" + std::to_string(id));
 		while (tok_.is(Token_Kind::kw_ELSIF)) {
 			advance();
-			parse_expression();
+			gen_.append("if_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+			auto expr { parse_expression() };
+			gen_.append(
+				"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %if_body_" + std::to_string(id) + "_" + std::to_string(alt) +
+				", label %if_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+			);
+			gen_.append_raw("if_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+			++alt;
 			consume(Token_Kind::kw_THEN);
 			parse_statement_sequence();
 		}
+		gen_.append("if_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
 		if (tok_.is(Token_Kind::kw_ELSE)) {
 			advance();
 			parse_statement_sequence();
 		}
+		gen_.append("if_end_" + std::to_string(id) + ":");
 		consume(Token_Kind::kw_END);
 		return;
 	}
 	// TODO: case statement
 	if (tok_.is(Token_Kind::kw_WHILE)) {
-		int cond_bb { gen_.cur_id() };
-		gen_.append("br label %while_cond_" + std::to_string(cond_bb));
-		gen_.append_raw("while_cond_" + std::to_string(cond_bb) + ":");
+		int id { gen_.next_while_id() };
+		int alt { 0 };
+		gen_.append("br label %while_cond_" + std::to_string(id) + "_" + std::to_string(alt));
+		gen_.append_raw("while_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
 		advance();
 		auto expr { parse_expression() };
 		gen_.append(
-			"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %while_body_" + std::to_string(cond_bb) +
-			", label %while_after_" + std::to_string(cond_bb)
+			"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %while_body_" + std::to_string(id) + "_" + std::to_string(alt) +
+			", label %while_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
 		);
 		consume(Token_Kind::kw_DO);
-		gen_.append_raw("while_body_" + std::to_string(cond_bb) + ":");
+		gen_.append_raw("while_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
 		parse_statement_sequence();
-		gen_.append("br label %while_cond_" + std::to_string(cond_bb));
-		gen_.append_raw("while_after_" + std::to_string(cond_bb) + ":");
-		/*
+		gen_.append("br label %while_cond_" + std::to_string(id) + "_0");
+		++alt;
+		gen_.append_raw("while_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+
 		while (tok_.is(Token_Kind::kw_ELSIF)) {
 			advance();
-			parse_expression();
+			auto expr { parse_expression() };
+			gen_.append(
+				"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %while_body_" + std::to_string(id) + "_" + std::to_string(alt) +
+				", label %while_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+			);
 			consume(Token_Kind::kw_DO);
+			gen_.append_raw("while_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
 			parse_statement_sequence();
+			gen_.append("br label %while_cond_" + std::to_string(id) + "_0");
+			++alt;
+			gen_.append_raw("while_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
 		}
-		*/
 		consume(Token_Kind::kw_END);
 		return;
 	}

@@ -5,12 +5,12 @@ entry:
 	%4 = alloca i32, align 4
 	store i32 %0, i32* %2, align 4
 	store i32 %1, i32* %3, align 4
-	br label %while_cond_4
-while_cond_4:
+	br label %while_cond_0_0
+while_cond_0_0:
 	%5 = load i32, i32* %3, align 4
 	%6 = icmp ne i32 %5, 0
-	br i1 %6, label %while_body_4, label %while_after_4
-while_body_4:
+	br i1 %6, label %while_body_0_0, label %while_cond_0_1
+while_body_0_0:
 	%7 = load i32, i32* %2, align 4
 	%8 = load i32, i32* %3, align 4
 	%9 = srem i32 %7, %8
@@ -19,8 +19,8 @@ while_body_4:
 	store i32 %10, i32* %2, align 4
 	%11 = load i32, i32* %4, align 4
 	store i32 %11, i32* %3, align 4
-	br label %while_cond_4
-while_after_4:
+	br label %while_cond_0_0
+while_cond_0_1:
 	%12 = load i32, i32* %2, align 4
 	ret i32 %12
 }
