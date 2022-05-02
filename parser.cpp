@@ -1,6 +1,5 @@
 #include "parser.h"
 
-#include "ll_type.h"
 #include "scope.h"
 
 void Parser::parse() {

@@ -3,6 +3,10 @@
 #include "ast.h"
 #include "err.h"
 
+Type::Ptr boolean_type = Type::create("BOOLEAN");
+Type::Ptr integer_type = Type::create("INTEGER");
+Type::Ptr real_type = Type::create("REAL");
+
 class Initial_Scope: public Scope {
 	public:
 		Initial_Scope(): Scope { nullptr } {

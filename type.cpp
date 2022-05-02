@@ -1,4 +1,4 @@
-#include "ll_type.h"
+#include "type.h"
 
 #include "err.h"
 
