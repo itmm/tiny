@@ -298,34 +298,84 @@ struct Greater_Or_Equal {
 Value::Ptr Parser::parse_expression() {
 	auto left { parse_simple_expression() };
 	for (;;) {
-		auto op { Binary_Op::none };
 		switch (tok_.kind()) {
 			case Token_Kind::equal:
 				advance();
-				return parse_full_predicate("eq", Equal { }, left, parse_simple_expression());
+				left = parse_full_predicate("eq", Equal { }, left, parse_simple_expression());
+				break;
 			case Token_Kind::not_equal:
 				advance();
-				return parse_full_predicate("ne", Not_Equal { }, left, parse_simple_expression());
+				left = parse_full_predicate("ne", Not_Equal { }, left, parse_simple_expression());
+				break;
 			case Token_Kind::less:
 				advance();
-				return parse_numeric_predicate("slt", Less { }, left, parse_simple_expression());
+				left = parse_numeric_predicate("slt", Less { }, left, parse_simple_expression());
+				break;
 			case Token_Kind::less_equal:
 				advance();
-				return parse_numeric_predicate("sle", Less_Or_Equal { }, left, parse_simple_expression());
+				left = parse_numeric_predicate("sle", Less_Or_Equal { }, left, parse_simple_expression());
+				break;
 			case Token_Kind::greater:
 				advance();
-				return parse_numeric_predicate("sgt", Greater { }, left, parse_simple_expression());
+				left = parse_numeric_predicate("sgt", Greater { }, left, parse_simple_expression());
+				break;
 			case Token_Kind::greater_equal:
 				advance();
-				return parse_numeric_predicate("sge", Greater_Or_Equal { }, left, parse_simple_expression());
-			default: break;
+				left = parse_numeric_predicate("sge", Greater_Or_Equal { }, left, parse_simple_expression());
+				break;
+			default: return left;
 		}
-		if (op == Binary_Op::none) { break; }
-		advance();
-		auto right { parse_simple_expression() };
-		left = Binary_Op::create(op, left, right, gen_);
 	}
 	return left;
+}
+
+Value::Ptr Parser::parse_binary_mul(Value::Ptr left, Value::Ptr right) {
+	auto lt { left->type() };
+	auto rt { left->type() };
+	if (! (is_numeric(lt) && is_numeric(rt))) {
+		throw Error { "wrong type for binary *" };
+	}
+
+	if (lt == integer_type && rt == integer_type) {
+		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
+		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
+
+		if (li && ri) {
+			return Integer_Literal::create(li->value() * ri->value());
+		}
+		if (li && li->value() == 1) { return right; }
+		if (ri && ri->value() == 1) { return left; }
+		if ((li && li->value() == 0) || (ri && ri->value() == 0)) {
+			return Integer_Literal::create(0);
+		}
+
+		auto r { Reference::create(gen_.next_id(), integer_type) };
+		gen_.append(
+			r->name() + " = mul i32 " + left->name() + ", " +
+			right->name()
+		);
+		return r;
+	}
+	
+	left = { propagate_to_real(left) };
+	right = { propagate_to_real(right) };
+	auto lr { std::dynamic_pointer_cast<Real_Literal>(left) };
+	auto rr { std::dynamic_pointer_cast<Real_Literal>(right) };
+	if (lr && rr) {
+		return Real_Literal::create(lr->value() + rr->value());
+	}
+	if (lr && lr->value() == 1.0) { return right; }
+	if (rr && rr->value() == 1.0) { return left; }
+	if ((lr && lr->value() == 0.0) || (rr && rr->value() == 0.0)) {
+		return Real_Literal::create(0.0);
+	}
+
+	auto r { Reference::create(gen_.next_id(), real_type) };
+	gen_.append(
+		r->name() + " = fmul double " + left->name() + ", " +
+		right->name()
+	);
+	return r;
 }
 
 Value::Ptr Parser::parse_term() {
@@ -333,15 +383,26 @@ Value::Ptr Parser::parse_term() {
 	for (;;) {
 		auto op { Binary_Op::none };
 		switch (tok_.kind()) {
-			case Token_Kind::star: op = Binary_Op::mul; break;
-			case Token_Kind::kw_DIV: op = Binary_Op::div; break;
-			case Token_Kind::kw_MOD: op = Binary_Op::mod; break;
-			default: break;
+			case Token_Kind::star:
+				advance();
+				left = parse_binary_mul(left, parse_factor());
+				break;
+			case Token_Kind::kw_DIV: {
+			       	op = Binary_Op::div;
+				advance();
+				auto right { parse_factor() };
+				left = Binary_Op::create(op, left, right, gen_);
+			       	break;
+			}
+			case Token_Kind::kw_MOD: {
+			       	op = Binary_Op::mod;
+				advance();
+				auto right { parse_factor() };
+				left = Binary_Op::create(op, left, right, gen_);
+			       	break;
+			}
+			default: return left;
 		}
-		if (op == Binary_Op::none) { break; }
-		advance();
-		auto right { parse_factor() };
-		left = Binary_Op::create(op, left, right, gen_);
 	}
 	return left;
 }
