@@ -34,6 +34,8 @@ class Parser {
 		Value::Ptr parse_conditional_or(Value::Ptr left);
 		Value::Ptr parse_simple_expression();
 		Value::Ptr parse_binary_mul(Value::Ptr left, Value::Ptr right);
+		Value::Ptr parse_binary_int_div(Value::Ptr left, Value::Ptr right);
+		Value::Ptr parse_binary_mod(Value::Ptr left, Value::Ptr right);
 		Value::Ptr parse_term();
 		Value::Ptr parse_unary_not(Value::Ptr left);
 		Value::Ptr parse_factor();

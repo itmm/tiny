@@ -95,34 +95,6 @@ class Reference: public Value {
 		std::string name() override;
 };
 
-class Binary_Op: public Value {
-	public:
-		enum Operator {
-		       	none, plus, minus, mul, div, equal, not_equal,
-			less, less_equal, greater, greater_equal, mod,
-			op_and, op_or
-		};
-	private:
-		Value::Ptr left_;
-		Value::Ptr right_;
-		Operator op_;
-		Binary_Op(
-			Operator op, Value::Ptr left, Value::Ptr right
-		):
-			left_ { left }, right_ { right }, op_ { op }
-		{ }
-	public:
-		using Ptr = std::shared_ptr<Binary_Op>;
-		static Value::Ptr create(
-			Operator op, Value::Ptr left, Value::Ptr right,
-			Gen &gen
-		);
-		auto left() const { return left_; }
-		auto right() const { return right_; }
-		auto op() const { return op_; }
-		Type_Declaration::Ptr type() override;
-};
-
 class Scoping_Declaration: public Declaration {
 	public:
 		using Ptr = std::shared_ptr<Scoping_Declaration>;

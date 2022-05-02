@@ -378,27 +378,67 @@ Value::Ptr Parser::parse_binary_mul(Value::Ptr left, Value::Ptr right) {
 	return r;
 }
 
+Value::Ptr Parser::parse_binary_int_div(Value::Ptr left, Value::Ptr right) {
+	if (left->type() != integer_type || right->type() != integer_type) {
+		throw Error { "wrong type for DIV" };
+	}
+
+	auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
+	auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
+
+	if (ri && ri->value() == 1) { return left; }
+
+	if (li && ri) {
+		if (ri->value() == 0) {
+			throw Error { "division by zero" };
+		}
+		return Integer_Literal::create(li->value() / ri->value());
+	}
+
+	auto r { Reference::create(gen_.next_id(), integer_type) };
+	gen_.append(
+		r->name() + " = div i32 " + left->name() + ", " +
+		right->name()
+	);
+	return r;
+}
+
+Value::Ptr Parser::parse_binary_mod(Value::Ptr left, Value::Ptr right) {
+	if (left->type() != integer_type || right->type() != integer_type) {
+		throw Error { "wrong type for MOD" };
+	}
+
+	auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
+	auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
+
+	if (li && ri) {
+		return Integer_Literal::create(li->value() % ri->value());
+	}
+
+	auto r { Reference::create(gen_.next_id(), integer_type) };
+	gen_.append(
+		r->name() + " = srem i32 " + left->name() + ", " +
+		right->name()
+	);
+	return r;
+}
+
 Value::Ptr Parser::parse_term() {
 	auto left { parse_factor() };
 	for (;;) {
-		auto op { Binary_Op::none };
 		switch (tok_.kind()) {
 			case Token_Kind::star:
 				advance();
 				left = parse_binary_mul(left, parse_factor());
 				break;
 			case Token_Kind::kw_DIV: {
-			       	op = Binary_Op::div;
 				advance();
-				auto right { parse_factor() };
-				left = Binary_Op::create(op, left, right, gen_);
-			       	break;
+				left = parse_binary_int_div(left, parse_factor());
+				break;
 			}
 			case Token_Kind::kw_MOD: {
-			       	op = Binary_Op::mod;
 				advance();
-				auto right { parse_factor() };
-				left = Binary_Op::create(op, left, right, gen_);
+				left = parse_binary_mod(left, parse_factor());
 			       	break;
 			}
 			default: return left;
