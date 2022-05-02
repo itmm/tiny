@@ -8,12 +8,17 @@ int main(int argc, const char **argv) {
 	std::string current_file;
 
 	try {
-		for (auto cur { argv + 1}, end { argv + argc }; cur != end; ++cur) {
+		for (
+			auto cur { argv + 1}, end { argv + argc };
+			cur != end; ++cur
+		) {
 			if (**cur == '-') { continue; }
 			Lexer::reset_current_line();
 			current_file = *cur;
 			std::ifstream in { *cur };
-			if (! in) { throw Error { "cannot open for reading" }; }
+			if (! in) {
+				throw Error { "cannot open for reading" };
+			}
 			Lexer lexer { in };
 			Parser parser { lexer };
 			parser.parse();
