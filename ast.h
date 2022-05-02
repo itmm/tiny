@@ -116,58 +116,30 @@ class Module_Declaration: public Scoping_Declaration {
 		}
 };
 
-class Variable: public Value {
-		std::string name_;
-		int ref_;
-		bool with_load_;
-	protected:
-		Variable(std::string name, bool with_load): name_ { name }, with_load_ { with_load } { }
-	public:
-		using Ptr = std::shared_ptr<Variable>;
-		static Variable::Ptr create(
-			std::string name, Type_Declaration::Ptr type, bool with_load
-		);
-		const std::string &name() const { return name_; }
-		void set_ref(int ref) { ref_ = ref; }
-		auto ref() { return ref_; }
-		bool with_load() { return with_load_; }
-};
-
-template<typename TRAIT> class Concrete_Variable: public Variable {
-		typename TRAIT::base_type value_;
-		Concrete_Variable(std::string name, bool with_load): Variable { name, with_load } { }
-	public:
-		using Ptr = std::shared_ptr<Concrete_Variable<TRAIT>>;
-		static auto create(std::string name, bool with_load) {
-			return Ptr { new Concrete_Variable<TRAIT> { name, with_load } };
-		}
-		std::string name() const { return name_; }
-		const auto &value() const { return value_; }
-		auto &value() { return value_; }
-		Type_Declaration::Ptr type() override {
-		       	return TRAIT::oberon_type;
-	       	}
-};
-
-using Bool_Variable = Concrete_Variable<Bool_Trait>;
-using Integer_Variable = Concrete_Variable<Integer_Trait>;
-using Real_Variable = Concrete_Variable<Real_Trait>;
-
 class Variable_Declaration: public Declaration {
-		Variable::Ptr variable_;
+		Reference::Ptr ref_;
 		bool is_var_;
+		bool with_load_;
 
-		Variable_Declaration(Variable::Ptr variable, bool is_var):
-			Declaration { variable->name() },
-			variable_ { variable }, is_var_ { is_var }
+		Variable_Declaration(
+			std::string name, Reference::Ptr ref, bool is_var, bool with_load
+		):
+			Declaration { name }, ref_ { ref }, is_var_ { is_var }, with_load_ { with_load }
 		{ }
 	public:
 		using Ptr = std::shared_ptr<Variable_Declaration>;
-		static auto create(Variable::Ptr variable, bool is_var) {
-			return Ptr { new Variable_Declaration { variable, is_var } };
+		static auto create(
+			std::string name, Reference::Ptr ref, bool is_var, bool with_load
+		) {
+			return Ptr { new Variable_Declaration {
+				name, ref, is_var, with_load
+			} };
 		}
-		auto type() { return variable_->type(); }
-		auto variable() { return variable_; }
+		auto type() { return ref_ ? ref_->type() : nullptr; }
+		auto ref() { return ref_; }
+		void set_ref(Reference::Ptr ref) { ref_ = ref; }
+		auto is_var() { return is_var_; }
+		auto with_load() { return with_load_; }
 };
 
 class Procedure_Declaration: public Scoping_Declaration {

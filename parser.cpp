@@ -471,14 +471,14 @@ Value::Ptr Parser::parse_factor() {
 		case Token_Kind::identifier: {
 			auto got { parse_qual_ident() };
 			if (auto var { std::dynamic_pointer_cast<Variable_Declaration>(got) }) {
-				if (var->variable()->with_load()) {
+				if (var->with_load()) {
 					auto r { gen_.next_id() };
-					gen_.append("%" + std::to_string(r) +
-						" = load " + get_ir_type(var->variable()->type()) + ", " + get_ir_type(var->variable()->type()) + "* %" + std::to_string(var->variable()->ref()) + ", align 4");
-					res = Reference::create(r, var->variable()->type());
+					res = Reference::create(r, var->type());
+					gen_.append(res->name() +
+						" = load " + get_ir_type(var->type()) + ", " + get_ir_type(var->type()) + "* " + var->ref()->name() + ", align 4");
 					
 				} else {
-					res = Reference::create(var->variable()->ref(), var->variable()->type());
+					res = var->ref();
 				}
 			} else if (auto cnst { std::dynamic_pointer_cast<Const_Declaration>(got) }) {
 				res = cnst->value();
@@ -613,9 +613,9 @@ void Parser::parse_statement() {
 		if (! v) { throw Error { v->name() + " is no variable for assignment" }; }
 		auto e { parse_expression() };
 		gen_.append(
-			"store " + get_ir_type(v->variable()->type()) + " " +
-				e->name() + ", " + get_ir_type(v->variable()->type()) +
-				"* %" + std::to_string(v->variable()->ref()) + ", align 4"
+			"store " + get_ir_type(v->type()) + " " +
+				e->name() + ", " + get_ir_type(v->type()) +
+				"* " + v->ref()->name() + ", align 4"
 		);
 	} else if (tok_.is(Token_Kind::l_paren)) {
 		advance();
@@ -673,7 +673,7 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_parameter_declaration(bool 
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(Variable::create(n, t, false), is_var);
+		auto dcl = Variable_Declaration::create(n, Reference::create(gen_.next_id(), t), is_var, false);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -688,11 +688,10 @@ std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration() {
 	if (! t) { throw Error { d->name() + " is no type" }; }
 	std::vector<Variable_Declaration::Ptr> result;
 	for (auto &n : ids) {
-		auto r { gen_.next_id() };
-		gen_.append("%" + std::to_string(r) + " = alloca " + get_ir_type(t) +
+		auto r { Reference::create(gen_.next_id(), t) };
+		gen_.append(r->name() + " = alloca " + get_ir_type(t) +
 			", align 4");
-		auto dcl = Variable_Declaration::create(Variable::create(n, t, true), false);
-		dcl->variable()->set_ref(r);
+		auto dcl = Variable_Declaration::create(n, r, false, true);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -778,10 +777,9 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declarati
 	int j { 0 };
 	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i, ++j) {
 		if (j) { def += ", "; }
-		int id { gen_.next_id() };
-		def += get_ir_type((**i).variable()->type()) + " %";
-		def += std::to_string(id);
-		(**i).variable()->set_ref(id);
+		auto r { Reference::create(gen_.next_id(), (**i).type()) };
+		def += get_ir_type(r->type()) + " " + r->name();
+		(**i).set_ref(r);
 	}
 	def += ") {";
 	gen_.append_raw(def);

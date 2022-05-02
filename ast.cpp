@@ -14,18 +14,6 @@ std::string Reference::name() {
 	return "%" + std::to_string(index_);
 };
 
-Variable::Ptr Variable::create(std::string name, Type_Declaration::Ptr type, bool with_load) {
-	if (! type) { throw Error { "no type in creation of '" + name + "'" }; }
-	if (type == integer_type) {
-		return Integer_Variable::create(name, with_load);
-	} else if (type == boolean_type) {
-		return Bool_Variable::create(name, with_load);
-	} else if (type == real_type) {
-		return Real_Variable::create(name, with_load);
-	}
-	throw Error { "can't create variable from " + type->name() };
-}
-
 std::string Scoping_Declaration::mangle(std::string name) const {
 	auto mangled = this->name() + "_" + name;
 	if (parent_) {
