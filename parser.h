@@ -24,7 +24,7 @@ class Parser {
 			expect(k); advance();
 		}
 
-		template<typename FN> Value::Ptr parse_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right);
+		template<typename FN> Value::Ptr parse_numeric_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right);
 		template<typename FN> Value::Ptr parse_full_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right);
 		Value::Ptr parse_expression();
 		Value::Ptr parse_unary_plus(Value::Ptr left);

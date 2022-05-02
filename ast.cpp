@@ -50,40 +50,6 @@ template<typename FN> inline auto apply_bool_bool_casted(
 	return apply_bool_casted<Bool_Literal, FN>(left, right, fn);
 }
 
-template<typename FN> inline auto apply_bool_int_casted(
-	Literal::Ptr left, Literal::Ptr right, FN fn
-) {
-	return apply_bool_casted<Integer_Literal, FN>(left, right, fn);
-}
-
-template<typename FN> inline auto apply_bool_real_casted(
-	Literal::Ptr left, Literal::Ptr right, FN fn
-) {
-	return apply_bool_casted<Real_Literal, FN>(left, right, fn);
-}
-
-template<typename FN> inline auto literal_num_relation(Literal::Ptr left, Literal::Ptr right, FN fn) {
-	auto il { std::dynamic_pointer_cast<Integer_Literal>(left) };
-	auto ir { std::dynamic_pointer_cast<Integer_Literal>(right) };
-
-	if (il && ir) { return apply_bool_int_casted(left, right, fn); }
-	
-	auto rl { std::dynamic_pointer_cast<Real_Literal>(left) };
-	auto rr { std::dynamic_pointer_cast<Real_Literal>(right) };
-
-	if (! rl && il) { rl = Real_Literal::create(il->value()); }
-	if (! rr && ir) { rr = Real_Literal::create(ir->value()); }
-
-	if (rl && rr) { return apply_bool_real_casted(left, right, fn); }
-
-	throw Error { "wrong numeric relation argument types" };
-}
-
-template<typename FN> inline auto literal_full_relation(Literal::Ptr left, Literal::Ptr right, FN fn) {
-	if (auto res { apply_bool_int_casted(left, right, fn) }) { return res; }
-	return literal_num_relation(left, right, fn);
-}
-
 template<typename ARGS, typename FN> inline auto apply_int_casted(
 	Literal::Ptr left, Literal::Ptr right, FN fn
 ) {
@@ -143,38 +109,6 @@ template<typename FN> inline auto literal_bin_bool(
 	throw Error { "binary boolean: wrong argument types" };
 }
 
-struct Equal {
-	bool operator()(int a, int b) { return a == b; }
-	bool operator()(bool a, bool b) { return a == b; }
-	bool operator()(double a, double b) { return a == b; }
-};
-
-struct Not_Equal {
-	bool operator()(int a, int b) { return a != b; }
-	bool operator()(bool a, bool b) { return a != b; }
-	bool operator()(double a, double b) { return a != b; }
-};
-
-struct Less {
-	bool operator()(int a, int b) { return a < b; }
-	bool operator()(double a, double b) { return a < b; }
-};
-
-struct Less_Or_Equal {
-	bool operator()(int a, int b) { return a <= b; }
-	bool operator()(double a, double b) { return a <= b; }
-};
-
-struct Greater {
-	bool operator()(int a, int b) { return a > b; }
-	bool operator()(double a, double b) { return a > b; }
-};
-
-struct Greater_Or_Equal {
-	bool operator()(int a, int b) { return a >= b; }
-	bool operator()(double a, double b) { return a >= b; }
-};
-
 struct Mul {
 	int operator()(int a, int b) { return a * b; }
 	double operator()(double a, double b) { return a * b; }
@@ -183,19 +117,7 @@ struct Mul {
 static Value::Ptr literal_bin_op(
 	Binary_Op::Operator op, Literal::Ptr left, Literal::Ptr right
 ) {
-	if (op == Binary_Op::equal) {
-		return literal_full_relation(left, right, Equal { });
-	} else if (op == Binary_Op::not_equal) {
-		return literal_full_relation(left, right, Not_Equal { });
-	} else if (op == Binary_Op::less) {
-		return literal_num_relation(left, right, Less { });
-	} else if (op == Binary_Op::less_equal) {
-		return literal_num_relation(left, right, Less_Or_Equal { });
-	} else if (op == Binary_Op::greater) {
-		return literal_num_relation(left, right, Greater { });
-	} else if (op == Binary_Op::greater_equal) {
-		return literal_num_relation(left, right, Greater_Or_Equal { });
-	} else if (op == Binary_Op::mul) {
+	if (op == Binary_Op::mul) {
 		return literal_bin_numeric(left, right, Mul { });
 	} else if (op == Binary_Op::div) {
 		return literal_bin_int(
@@ -225,48 +147,6 @@ Value::Ptr Binary_Op::create(
 	if (ll && lr) { return literal_bin_op(op, ll, lr); }
 
 	switch (op) {
-		case Binary_Op::equal: {
-			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = icmp eq " +
-				get_ir_type(left->type()) + " " +
-				left->name() + ", " + right->name());
-			return Reference::create(r, boolean_type);
-		}
-		case Binary_Op::not_equal: {
-			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = icmp ne " +
-				get_ir_type(left->type()) + " " +
-				left->name() + ", " + right->name());
-			return Reference::create(r, boolean_type);
-		}
-		case Binary_Op::less: {
-			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = icmp slt " +
-				get_ir_type(left->type()) + " " +
-				left->name() + ", " + right->name());
-			return Reference::create(r, boolean_type);
-		}
-		case Binary_Op::less_equal: {
-			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = icmp sle " +
-				get_ir_type(left->type()) + " " +
-				left->name() + ", " + right->name());
-			return Reference::create(r, boolean_type);
-		}
-		case Binary_Op::greater: {
-			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = icmp sgt " +
-				get_ir_type(left->type()) + " " +
-				left->name() + ", " + right->name());
-			return Reference::create(r, boolean_type);
-		}
-		case Binary_Op::greater_equal: {
-			auto r { gen.next_id() };
-			gen.append("%" + std::to_string(r) + " = icmp sge " +
-				get_ir_type(left->type()) + " " +
-				left->name() + ", " + right->name());
-			return Reference::create(r, boolean_type);
-		}
 		case Binary_Op::mod: {
 			auto r { gen.next_id() };
 			gen.append("%" + std::to_string(r) + " = srem " +
@@ -283,12 +163,6 @@ Type_Declaration::Ptr Binary_Op::type() {
 	switch (op()) {
 		case Operator::none:
 			return nullptr;
-		case Operator::equal:
-		case Operator::not_equal:
-		case Operator::less:
-		case Operator::less_equal:
-		case Operator::greater:
-		case Operator::greater_equal:
 		case Operator::op_and:
 		case Operator::op_or:
 			return boolean_type;
