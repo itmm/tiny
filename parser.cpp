@@ -166,12 +166,132 @@ Value::Ptr Parser::parse_simple_expression() {
 	}
 }
 
+/*
+		case Binary_Op::equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp eq " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::not_equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp ne " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::less: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp slt " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::less_equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp sle " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::greater: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp sgt " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::greater_equal: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = icmp sge " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, boolean_type);
+		}
+		case Binary_Op::mod: {
+			auto r { gen.next_id() };
+			gen.append("%" + std::to_string(r) + " = srem " +
+				get_ir_type(left->type()) + " " +
+				left->name() + ", " + right->name());
+			return Reference::create(r, integer_type);
+		}
+*/
+
+template<typename FN> Value::Ptr Parser::parse_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right) {
+	auto lt { left->type() };
+	auto rt { left->type() };
+	if (! (is_numeric(lt) && is_numeric(rt))) {
+		throw Error { "wrong type for predicate" };
+	}
+
+	if (lt == integer_type && rt == integer_type) {
+		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
+		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
+
+		if (li && ri) {
+			return Bool_Literal::create(fn(li->value(), ri->value()));
+		}
+
+		auto r { Reference::create(gen_.next_id(), boolean_type) };
+		gen_.append(
+			r->name() + " = icmp " + cmd + " i32 " + left->name() + ", " +
+			right->name()
+		);
+		return r;
+	}
+	
+	left = { propagate_to_real(left) };
+	right = { propagate_to_real(right) };
+	auto lr { std::dynamic_pointer_cast<Real_Literal>(left) };
+	auto rr { std::dynamic_pointer_cast<Real_Literal>(right) };
+	if (lr && rr) {
+		return Real_Literal::create(fn(lr->value(), rr->value()));
+	}
+
+	auto r { Reference::create(gen_.next_id(), boolean_type) };
+	gen_.append(
+		r->name() + " = fcmp " + cmd + " double " + left->name() + ", " +
+		right->name()
+	);
+	return r;
+}
+
+template<typename FN> Value::Ptr Parser::parse_full_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right) {
+	auto lt { left->type() };
+	auto rt { left->type() };
+	if (lt == boolean_type && rt == boolean_type) {
+		auto lb { std::dynamic_pointer_cast<Bool_Literal>(left) };
+		auto rb { std::dynamic_pointer_cast<Bool_Literal>(right) };
+
+		if (lb && rb) {
+			return Bool_Literal::create(fn(lb->value(), rb->value()));
+		}
+
+		auto r { Reference::create(gen_.next_id(), boolean_type) };
+		gen_.append(
+			r->name() + " = icmp " + cmd + " i1 " + left->name() + ", " +
+			right->name()
+		);
+		return r;
+	}
+	return parse_predicate(cmd, fn, left, right);
+}
+
+struct Equal {
+	bool operator()(int a, int b) { return a == b; }
+	bool operator()(bool a, bool b) { return a == b; }
+	bool operator()(double a, double b) { return a == b; }
+};
+
 Value::Ptr Parser::parse_expression() {
 	auto left { parse_simple_expression() };
 	for (;;) {
 		auto op { Binary_Op::none };
 		switch (tok_.kind()) {
-			case Token_Kind::equal: op = Binary_Op::equal; break;
+			case Token_Kind::equal:
+				advance();
+				return parse_full_predicate("eq", Equal { }, left, parse_simple_expression());
 			case Token_Kind::not_equal: op = Binary_Op::not_equal; break;
 			case Token_Kind::less: op = Binary_Op::less; break;
 			case Token_Kind::less_equal: op = Binary_Op::less_equal; break;
