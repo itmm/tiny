@@ -135,6 +135,40 @@ Value::Ptr Parser::parse_binary_minus(Value::Ptr left, Value::Ptr right) {
 	return r;
 }
 
+Value::Ptr Parser::parse_conditional_or(Value::Ptr left) {
+	if (left->type() != boolean_type) { throw Error { "wrong type for OR" }; }
+	if (auto lb { std::dynamic_pointer_cast<Bool_Literal>(left) }) {
+		if (lb->value()) {
+			gen_.hide();
+			parse_term();
+			gen_.show();
+			return left;
+		} else {
+			return parse_term();
+		}
+	} else {
+		auto id { gen_.next_or_id() };
+		gen_.append("%or_store_" + std::to_string(id) + " = alloca i1, align 4");
+		gen_.append(
+			"store i1 " + left->name() + ", i1* %or_store_" + std::to_string(id) + ", align 4"
+		);
+		gen_.append(
+			"br i1 " + left->name() + ", label %or_end_" + std::to_string(id) +
+			", label %or_alt_" + std::to_string(id)
+		);
+		gen_.append_raw("or_alt_" + std::to_string(id) + ":");
+		auto right { parse_term() };
+		gen_.append(
+			"store i1 " + right->name() + ", i1* %or_store_" + std::to_string(id) + ", align 4"
+		);
+		gen_.append("br label %or_end_" + std::to_string(id));
+		gen_.append_raw("or_end_" + std::to_string(id) + ":");
+		auto r { Reference::create(gen_.next_id(), boolean_type) };
+		gen_.append(r->name() + " = load i1, i1* %or_store_" + std::to_string(id) + ", align 4");
+		return r;
+	}
+}
+
 Value::Ptr Parser::parse_simple_expression() {
 	Value::Ptr left;
 	switch (tok_.kind()) {
@@ -161,6 +195,9 @@ Value::Ptr Parser::parse_simple_expression() {
 				advance();
 				left = parse_binary_minus(left, parse_term());
 				break;
+			case Token_Kind::kw_OR:
+				advance();
+				left = parse_conditional_or(left);
 			default: return left;
 		}
 	}

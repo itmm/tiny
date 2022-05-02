@@ -31,6 +31,7 @@ class Parser {
 		Value::Ptr parse_unary_minus(Value::Ptr left);
 		Value::Ptr parse_binary_plus(Value::Ptr left, Value::Ptr right);
 		Value::Ptr parse_binary_minus(Value::Ptr left, Value::Ptr right);
+		Value::Ptr parse_conditional_or(Value::Ptr left);
 		Value::Ptr parse_simple_expression();
 		Value::Ptr parse_term();
 		Value::Ptr parse_unary_not(Value::Ptr left);
