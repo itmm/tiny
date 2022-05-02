@@ -25,10 +25,10 @@ MODULE Gcd;
 		BEGIN
 		RETURN a + b
 	END Sum;
-	PROCEDURE Summ(a, b: REAL): REAL;
+	PROCEDURE Sum2(a, b: REAL): REAL;
 		BEGIN
 		RETURN a + b
-	END Summ;
+	END Sum2;
 	PROCEDURE Mod(a, b: INTEGER): INTEGER;
 		BEGIN
 		RETURN a MOD b

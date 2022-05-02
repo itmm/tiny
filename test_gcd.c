@@ -2,7 +2,7 @@ extern void Gcd__init();
 extern int Gcd_GCD(int, int);
 extern int Gcd_Min(int, int);
 extern int Gcd_Sum(int, int);
-extern double Gcd_Summ(double, double);
+extern double Gcd_Sum2(double, double);
 
 #include <stdio.h>
 #include <assert.h>
@@ -25,8 +25,8 @@ void run_sum(int a, int b, int ex) {
 	assert(got == ex);
 }
 
-void run_summ(double a, double b, double ex) {
-	double got = Gcd_Summ(a, b);
+void run_sum2(double a, double b, double ex) {
+	double got = Gcd_Sum2(a, b);
 	printf("sum(%f, %f) == %f\n", a, b, got);
 	assert(got == ex);
 }
@@ -40,5 +40,5 @@ int main() {
 	run_min(30, 10, 10);
 	run_min(11, 11, 11);
 	run_sum(3, 4, 7);
-	run_summ(3.0, 4.0, 7.0);
+	run_sum2(3.0, 4.0, 7.0);
 }

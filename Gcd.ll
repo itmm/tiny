@@ -46,7 +46,7 @@ entry:
 	%2 = add i32 %0, %1
 	ret i32 %2
 }
-define double @Gcd_Summ(double %0, double %1) {
+define double @Gcd_Sum2(double %0, double %1) {
 entry:
 	%2 = fadd double %0, %1
 	ret double %2

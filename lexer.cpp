@@ -96,7 +96,7 @@ void Lexer::next(Token &tok) {
 	if (ch_ == EOF) { tok.kind_ = Token_Kind::eoi; return; }
 	if (Char_Info::is_letter(ch_)) {
 		std::string name;
-		while (Char_Info::is_letter(ch_)) {
+		while (Char_Info::is_letter(ch_) || Char_Info::is_digit(ch_)) {
 			name += ch_; ch_ = in_.get();
 		}
 		auto got { keywords.find(name) };
