@@ -8,7 +8,7 @@ void Parser::parse() {
 	expect(Token_Kind::eoi);
 }
 
-bool is_numeric(Type_Declaration::Ptr t) {
+bool is_numeric(Type::Ptr t) {
 	return t == integer_type || t == real_type;
 }
 
@@ -62,9 +62,9 @@ Value::Ptr Parser::parse_binary_plus(Value::Ptr left, Value::Ptr right) {
 		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
 		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
 
-		if (li && ri) {
-			return Integer_Literal::create(li->value() + ri->value());
-		}
+		if (li && ri) { return Integer_Literal::create(
+			li->value() + ri->value()
+		); }
 		if (li && li->value() == 0) { return right; }
 		if (ri && ri->value() == 0) { return left; }
 
@@ -105,9 +105,9 @@ Value::Ptr Parser::parse_binary_minus(Value::Ptr left, Value::Ptr right) {
 		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
 		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
 
-		if (li && ri) {
-			return Integer_Literal::create(li->value() - ri->value());
-		}
+		if (li && ri) { return Integer_Literal::create(
+			li->value() - ri->value()
+		); }
 		if (ri && ri->value() == 0) { return left; }
 
 		auto r { Reference::create(gen_.next_id(), integer_type) };
@@ -136,7 +136,9 @@ Value::Ptr Parser::parse_binary_minus(Value::Ptr left, Value::Ptr right) {
 }
 
 Value::Ptr Parser::parse_conditional_or(Value::Ptr left) {
-	if (left->type() != boolean_type) { throw Error { "wrong type for OR" }; }
+	if (left->type() != boolean_type) {
+		throw Error { "wrong type for OR" };
+	}
 	if (auto lb { std::dynamic_pointer_cast<Bool_Literal>(left) }) {
 		if (lb->value()) {
 			gen_.hide();
@@ -147,24 +149,29 @@ Value::Ptr Parser::parse_conditional_or(Value::Ptr left) {
 			return parse_term();
 		}
 	} else {
-		auto id { gen_.next_or_id() };
-		gen_.append("%or_store_" + std::to_string(id) + " = alloca i1, align 4");
+		auto id { std::to_string(gen_.next_or_id()) };
+		gen_.append("%or_store_" + id + " = alloca i1, align 4");
 		gen_.append(
-			"store i1 " + left->name() + ", i1* %or_store_" + std::to_string(id) + ", align 4"
+			"store i1 " + left->name() +
+			", i1* %or_store_" + id + ", align 4"
 		);
 		gen_.append(
-			"br i1 " + left->name() + ", label %or_end_" + std::to_string(id) +
-			", label %or_alt_" + std::to_string(id)
+			"br i1 " + left->name() + ", label %or_end_" + id +
+			", label %or_alt_" + id
 		);
-		gen_.append_raw("or_alt_" + std::to_string(id) + ":");
+		gen_.append_raw("or_alt_" + id + ":");
 		auto right { parse_term() };
 		gen_.append(
-			"store i1 " + right->name() + ", i1* %or_store_" + std::to_string(id) + ", align 4"
+			"store i1 " + right->name() + 
+			", i1* %or_store_" + id + ", align 4"
 		);
-		gen_.append("br label %or_end_" + std::to_string(id));
-		gen_.append_raw("or_end_" + std::to_string(id) + ":");
+		gen_.append("br label %or_end_" + id);
+		gen_.append_raw("or_end_" + id + ":");
 		auto r { Reference::create(gen_.next_id(), boolean_type) };
-		gen_.append(r->name() + " = load i1, i1* %or_store_" + std::to_string(id) + ", align 4");
+		gen_.append(
+			r->name() + " = load i1, "
+			"i1* %or_store_" + id + ", align 4"
+		);
 		return r;
 	}
 }
@@ -203,7 +210,9 @@ Value::Ptr Parser::parse_simple_expression() {
 	}
 }
 
-template<typename FN> Value::Ptr Parser::parse_numeric_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right) {
+template<typename FN> Value::Ptr Parser::parse_numeric_predicate(
+	std::string cmd, FN fn, Value::Ptr left, Value::Ptr right
+) {
 	auto lt { left->type() };
 	auto rt { left->type() };
 	if (! (is_numeric(lt) && is_numeric(rt))) {
@@ -214,14 +223,14 @@ template<typename FN> Value::Ptr Parser::parse_numeric_predicate(std::string cmd
 		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
 		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
 
-		if (li && ri) {
-			return Bool_Literal::create(fn(li->value(), ri->value()));
-		}
+		if (li && ri) { return Bool_Literal::create(
+			fn(li->value(), ri->value())
+		); }
 
 		auto r { Reference::create(gen_.next_id(), boolean_type) };
 		gen_.append(
-			r->name() + " = icmp " + cmd + " i32 " + left->name() + ", " +
-			right->name()
+			r->name() + " = icmp " + cmd +
+			" i32 " + left->name() + ", " + right->name()
 		);
 		return r;
 	}
@@ -236,27 +245,29 @@ template<typename FN> Value::Ptr Parser::parse_numeric_predicate(std::string cmd
 
 	auto r { Reference::create(gen_.next_id(), boolean_type) };
 	gen_.append(
-		r->name() + " = fcmp " + cmd + " double " + left->name() + ", " +
-		right->name()
+		r->name() + " = fcmp " + cmd + " double " + left->name() +
+		", " + right->name()
 	);
 	return r;
 }
 
-template<typename FN> Value::Ptr Parser::parse_full_predicate(std::string cmd, FN fn, Value::Ptr left, Value::Ptr right) {
+template<typename FN> Value::Ptr Parser::parse_full_predicate(
+	std::string cmd, FN fn, Value::Ptr left, Value::Ptr right
+) {
 	auto lt { left->type() };
 	auto rt { left->type() };
 	if (lt == boolean_type && rt == boolean_type) {
 		auto lb { std::dynamic_pointer_cast<Bool_Literal>(left) };
 		auto rb { std::dynamic_pointer_cast<Bool_Literal>(right) };
 
-		if (lb && rb) {
-			return Bool_Literal::create(fn(lb->value(), rb->value()));
-		}
+		if (lb && rb) { return Bool_Literal::create(
+			fn(lb->value(), rb->value())
+		); }
 
 		auto r { Reference::create(gen_.next_id(), boolean_type) };
 		gen_.append(
-			r->name() + " = icmp " + cmd + " i1 " + left->name() + ", " +
-			right->name()
+			r->name() + " = icmp " + cmd +
+			" i1 " + left->name() + ", " + right->name()
 		);
 		return r;
 	}
@@ -301,27 +312,45 @@ Value::Ptr Parser::parse_expression() {
 		switch (tok_.kind()) {
 			case Token_Kind::equal:
 				advance();
-				left = parse_full_predicate("eq", Equal { }, left, parse_simple_expression());
+				left = parse_full_predicate(
+					"eq", Equal { }, left,
+					parse_simple_expression()
+				);
 				break;
 			case Token_Kind::not_equal:
 				advance();
-				left = parse_full_predicate("ne", Not_Equal { }, left, parse_simple_expression());
+				left = parse_full_predicate(
+					"ne", Not_Equal { }, left, 
+					parse_simple_expression()
+				);
 				break;
 			case Token_Kind::less:
 				advance();
-				left = parse_numeric_predicate("slt", Less { }, left, parse_simple_expression());
+				left = parse_numeric_predicate(
+					"slt", Less { }, left, 
+					parse_simple_expression()
+				);
 				break;
 			case Token_Kind::less_equal:
 				advance();
-				left = parse_numeric_predicate("sle", Less_Or_Equal { }, left, parse_simple_expression());
+				left = parse_numeric_predicate(
+					"sle", Less_Or_Equal { }, left, 
+					parse_simple_expression()
+				);
 				break;
 			case Token_Kind::greater:
 				advance();
-				left = parse_numeric_predicate("sgt", Greater { }, left, parse_simple_expression());
+				left = parse_numeric_predicate(
+					"sgt", Greater { }, left, 
+					parse_simple_expression()
+				);
 				break;
 			case Token_Kind::greater_equal:
 				advance();
-				left = parse_numeric_predicate("sge", Greater_Or_Equal { }, left, parse_simple_expression());
+				left = parse_numeric_predicate(
+					"sge", Greater_Or_Equal { }, left,
+					parse_simple_expression()
+				);
 				break;
 			default: return left;
 		}
@@ -340,9 +369,9 @@ Value::Ptr Parser::parse_binary_mul(Value::Ptr left, Value::Ptr right) {
 		auto li { std::dynamic_pointer_cast<Integer_Literal>(left) };
 		auto ri { std::dynamic_pointer_cast<Integer_Literal>(right) };
 
-		if (li && ri) {
-			return Integer_Literal::create(li->value() * ri->value());
-		}
+		if (li && ri) { return Integer_Literal::create(
+			li->value() * ri->value()
+		); }
 		if (li && li->value() == 1) { return right; }
 		if (ri && ri->value() == 1) { return left; }
 		if ((li && li->value() == 0) || (ri && ri->value() == 0)) {
@@ -433,7 +462,9 @@ Value::Ptr Parser::parse_term() {
 				break;
 			case Token_Kind::kw_DIV: {
 				advance();
-				left = parse_binary_int_div(left, parse_factor());
+				left = parse_binary_int_div(
+					left, parse_factor()
+				);
 				break;
 			}
 			case Token_Kind::kw_MOD: {
@@ -466,31 +497,47 @@ Value::Ptr Parser::parse_factor() {
 	std::shared_ptr<Value> res;
 	switch(tok_.kind()) {
 		case Token_Kind::integer_literal:
-			res = Integer_Literal::create(std::stoi(tok_.literal_data()));
-			advance(); break;
+			res = Integer_Literal::create(
+				std::stoi(tok_.literal_data())
+			);
+			advance();
+			break;
 		case Token_Kind::identifier: {
 			auto got { parse_qual_ident() };
-			if (auto var { std::dynamic_pointer_cast<Variable_Declaration>(got) }) {
+			if (auto var { std::dynamic_pointer_cast<Variable>(
+				got
+			) }) {
 				if (var->with_load()) {
 					auto r { gen_.next_id() };
-					res = Reference::create(r, var->type());
-					gen_.append(res->name() +
-						" = load " + get_ir_type(var->type()) + ", " + get_ir_type(var->type()) + "* " + var->ref()->name() + ", align 4");
-					
+					res = Reference::create(
+						r, var->type()
+					);
+					gen_.append(
+						res->name() + " = load " +
+						get_ir_type(var->type()) +
+						", " +
+						get_ir_type(var->type()) +
+						"* " + var->ref()->name() +
+						", align 4"
+					);
 				} else {
 					res = var->ref();
 				}
-			} else if (auto cnst { std::dynamic_pointer_cast<Const_Declaration>(got) }) {
-				res = cnst->value();
+			} else if (auto c { std::dynamic_pointer_cast<Const>(
+				got
+			) }) {
+				res = c->value();
 			} else { throw Error { got->name() + " not found" }; }
 			break;
 		}
 		case Token_Kind::kw_FALSE:
 			res = Bool_Literal::create(false);
-			advance(); break;
+			advance();
+			break;
 		case Token_Kind::kw_TRUE:
 			res = Bool_Literal::create(true);
-			advance(); break;
+			advance();
+			break;
 		case Token_Kind::sym_not:
 			advance();
 			res = parse_unary_not(parse_expression());
@@ -520,76 +567,114 @@ std::string def_label(int value) {
 
 void Parser::parse_statement() {
 	if (tok_.is(Token_Kind::kw_IF)) {
-		int id { gen_.next_if_id() };
+		auto id { std::to_string(gen_.next_if_id()) };
 		int alt { 0 };
-		gen_.append("br label %if_cond_" + std::to_string(id) + "_" + std::to_string(alt));
-		gen_.append_raw("if_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		gen_.append(
+			"br label %if_cond_" + id + "_" + std::to_string(alt)
+		);
+		gen_.append_raw(
+			"if_cond_" + id + "_" + std::to_string(alt) + ":"
+		);
 		advance();
 		auto expr { parse_expression() };
 		gen_.append(
-			"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %if_body_" + std::to_string(id) + "_" + std::to_string(alt) +
-			", label %if_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+			"br " + get_ir_type(expr->type()) + " " +
+			expr->name() + ", label %if_body_" + id + "_" +
+			std::to_string(alt) + ", label %if_cond_" + id + 
+			"_" + std::to_string(alt + 1)
 		);
-		gen_.append_raw("if_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		gen_.append_raw(
+			"if_body_" + id + "_" + std::to_string(alt) + ":"
+		);
 		++alt;
 		consume(Token_Kind::kw_THEN);
 		parse_statement_sequence();
-		gen_.append("br label %if_end_" + std::to_string(id));
-		gen_.append_raw("if_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		gen_.append("br label %if_end_" + id);
+		gen_.append_raw(
+			"if_cond_" + id + "_" + std::to_string(alt) + ":"
+		);
 		while (tok_.is(Token_Kind::kw_ELSIF)) {
 			advance();
 			auto expr { parse_expression() };
 			gen_.append(
-				"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %if_body_" + std::to_string(id) + "_" + std::to_string(alt) +
-				", label %if_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+				"br " + get_ir_type(expr->type()) + " " +
+				expr->name() + ", label %if_body_" + id +
+				"_" + std::to_string(alt) +
+				", label %if_cond_" + id + "_" +
+				std::to_string(alt + 1)
 			);
-			gen_.append_raw("if_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+			gen_.append_raw(
+				"if_body_" + id + "_" +
+				std::to_string(alt) + ":"
+			);
 			++alt;
 			consume(Token_Kind::kw_THEN);
 			parse_statement_sequence();
-			gen_.append("br label %if_end_" + std::to_string(id));
+			gen_.append("br label %if_end_" + id);
 		}
 		if (tok_.is(Token_Kind::kw_ELSE)) {
 			advance();
 			parse_statement_sequence();
 		}
-		gen_.append("br label %if_end_" + std::to_string(id));
-		gen_.append_raw("if_end_" + std::to_string(id) + ":");
+		gen_.append("br label %if_end_" + id);
+		gen_.append_raw("if_end_" + id + ":");
 		consume(Token_Kind::kw_END);
 		return;
 	}
 	// TODO: case statement
 	if (tok_.is(Token_Kind::kw_WHILE)) {
-		int id { gen_.next_while_id() };
+		auto id { std::to_string(gen_.next_while_id()) };
 		int alt { 0 };
-		gen_.append("br label %while_cond_" + std::to_string(id) + "_" + std::to_string(alt));
-		gen_.append_raw("while_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		gen_.append(
+			"br label %while_cond_" + id + "_" +
+			std::to_string(alt)
+		);
+		gen_.append_raw(
+			"while_cond_" + id + "_" + std::to_string(alt) + ":"
+		);
 		advance();
 		auto expr { parse_expression() };
 		gen_.append(
-			"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %while_body_" + std::to_string(id) + "_" + std::to_string(alt) +
-			", label %while_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+			"br " + get_ir_type(expr->type()) + " " +
+			expr->name() + ", label %while_body_" + id + "_" +
+			std::to_string(alt) + ", label %while_cond_" + id +
+			"_" + std::to_string(alt + 1)
 		);
 		consume(Token_Kind::kw_DO);
-		gen_.append_raw("while_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		gen_.append_raw(
+			"while_body_" + id + "_" + std::to_string(alt) + ":"
+		);
 		parse_statement_sequence();
-		gen_.append("br label %while_cond_" + std::to_string(id) + "_0");
+		gen_.append("br label %while_cond_" + id + "_0");
 		++alt;
-		gen_.append_raw("while_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+		gen_.append_raw(
+			"while_cond_" + id + "_" + std::to_string(alt) + ":"
+		);
 
 		while (tok_.is(Token_Kind::kw_ELSIF)) {
 			advance();
 			auto expr { parse_expression() };
 			gen_.append(
-				"br " + get_ir_type(expr->type()) + " " + expr->name() + ", label %while_body_" + std::to_string(id) + "_" + std::to_string(alt) +
-				", label %while_cond_" + std::to_string(id) + "_" + std::to_string(alt + 1)
+				"br " + get_ir_type(expr->type()) + " " +
+				expr->name() + ", label %while_body_" + id +
+				"_" + std::to_string(alt) +
+				", label %while_cond_" + id +
+				"_" + std::to_string(alt + 1)
 			);
 			consume(Token_Kind::kw_DO);
-			gen_.append_raw("while_body_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+			gen_.append_raw(
+				"while_body_" + id + "_" +
+				std::to_string(alt) + ":"
+			);
 			parse_statement_sequence();
-			gen_.append("br label %while_cond_" + std::to_string(id) + "_0");
+			gen_.append(
+				"br label %while_cond_" + id + "_0"
+			);
 			++alt;
-			gen_.append_raw("while_cond_" + std::to_string(id) + "_" + std::to_string(alt) + ":");
+			gen_.append_raw(
+				"while_cond_" + id + "_" +
+				std::to_string(alt) + ":"
+			);
 		}
 		consume(Token_Kind::kw_END);
 		return;
@@ -609,13 +694,15 @@ void Parser::parse_statement() {
 	auto id { parse_designator() };
 	if (tok_.is(Token_Kind::assign)) {
 		advance();
-		auto v { std::dynamic_pointer_cast<Variable_Declaration>(id) };
-		if (! v) { throw Error { v->name() + " is no variable for assignment" }; }
+		auto v { std::dynamic_pointer_cast<Variable>(id) };
+		if (! v) { throw Error {
+			v->name() + " is no variable for assignment"
+		}; }
 		auto e { parse_expression() };
 		gen_.append(
 			"store " + get_ir_type(v->type()) + " " +
-				e->name() + ", " + get_ir_type(v->type()) +
-				"* " + v->ref()->name() + ", align 4"
+			e->name() + ", " + get_ir_type(v->type()) +
+			"* " + v->ref()->name() + ", align 4"
 		);
 	} else if (tok_.is(Token_Kind::l_paren)) {
 		advance();
@@ -665,33 +752,35 @@ Declaration::Ptr Parser::parse_qual_ident() {
 	return got;
 }
 
-std::vector<Variable_Declaration::Ptr> Parser::parse_parameter_declaration(bool is_var) {
+std::vector<Variable::Ptr> Parser::parse_parameter_declaration(bool is_var) {
 	auto ids { parse_ident_list() };
 	consume(Token_Kind::colon);
 	auto d { parse_qual_ident() };
-	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
+	auto t { std::dynamic_pointer_cast<Type>(d) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
-	std::vector<Variable_Declaration::Ptr> result;
+	std::vector<Variable::Ptr> result;
 	for (auto &n : ids) {
-		auto dcl = Variable_Declaration::create(n, Reference::create(gen_.next_id(), t), is_var, false);
+		auto dcl = Variable::create(
+			n, Reference::create(gen_.next_id(), t), is_var, false
+		);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
 	return result;
 }
 
-std::vector<Variable_Declaration::Ptr> Parser::parse_variable_declaration() {
+std::vector<Variable::Ptr> Parser::parse_variable_declaration() {
 	auto ids { parse_ident_list() };
 	consume(Token_Kind::colon);
 	auto d { parse_qual_ident() };
-	auto t { std::dynamic_pointer_cast<Type_Declaration>(d) };
+	auto t { std::dynamic_pointer_cast<Type>(d) };
 	if (! t) { throw Error { d->name() + " is no type" }; }
-	std::vector<Variable_Declaration::Ptr> result;
+	std::vector<Variable::Ptr> result;
 	for (auto &n : ids) {
 		auto r { Reference::create(gen_.next_id(), t) };
 		gen_.append(r->name() + " = alloca " + get_ir_type(t) +
 			", align 4");
-		auto dcl = Variable_Declaration::create(n, r, false, true);
+		auto dcl = Variable::create(n, r, false, true);
 		current_scope->insert(dcl);
 		result.push_back(dcl);
 	}
@@ -706,13 +795,13 @@ Declaration::Ptr Parser::parse_formal_type() {
 	return parse_qual_ident();
 }
 
-std::vector<Variable_Declaration::Ptr> Parser::parse_fp_section(Procedure_Declaration::Ptr decl) {
+std::vector<Variable::Ptr> Parser::parse_fp_section(Procedure::Ptr decl) {
 	bool is_var { tok_.is(Token_Kind::kw_VAR) };
 	if (is_var) { advance(); }
 	return parse_parameter_declaration(is_var);
 }
 
-void Parser::parse_formal_parameters(Procedure_Declaration::Ptr decl) {
+void Parser::parse_formal_parameters(Procedure::Ptr decl) {
 	consume(Token_Kind::l_paren);
 	if (! tok_.is_one_of(Token_Kind::r_paren, Token_Kind::eoi)) {
 		auto args { parse_fp_section(decl) };
@@ -731,7 +820,7 @@ void Parser::parse_formal_parameters(Procedure_Declaration::Ptr decl) {
 	if (tok_.is(Token_Kind::colon)) {
 		advance();
 		auto got { parse_qual_ident() };
-		auto ty { std::dynamic_pointer_cast<Type_Declaration>(got) };
+		auto ty { std::dynamic_pointer_cast<Type>(got) };
 		if (! ty) { Error { got->name() + " is not a type" }; }
 		decl->set_returns(ty);
 	}
@@ -746,7 +835,7 @@ std::string Parser::parse_procedure_heading() {
 	return name;
 }
 
-void Parser::parse_procedure_body(Procedure_Declaration::Ptr decl) {
+void Parser::parse_procedure_body(Procedure::Ptr decl) {
 	parse_declaration_sequence(decl);
 	if (tok_.is(Token_Kind::kw_BEGIN)) {
 		advance();
@@ -755,16 +844,20 @@ void Parser::parse_procedure_body(Procedure_Declaration::Ptr decl) {
 	if (tok_.is(Token_Kind::kw_RETURN)) {
 		advance();
 		auto ret { parse_expression() };
-		gen_.append("ret " + get_ir_type(ret->type()) + " " + ret->name());
+		gen_.append(
+			"ret " + get_ir_type(ret->type()) + " " + ret->name()
+		);
 	} else {
 		gen_.append("ret void");
 	}
 	consume(Token_Kind::kw_END);
 }
 
-Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declaration::Ptr parent) {
+Procedure::Ptr Parser::parse_procedure_declaration(
+	Scoping_Declaration::Ptr parent
+) {
 	auto name { parse_procedure_heading() };
-	auto decl { Procedure_Declaration::create(name, parent) };
+	auto decl { Procedure::create(name, parent) };
 	Pushed_Scope pushed { decl };
 	if (tok_.is(Token_Kind::l_paren)) {
 		parse_formal_parameters(decl);
@@ -775,7 +868,10 @@ Procedure_Declaration::Ptr Parser::parse_procedure_declaration(Scoping_Declarati
 	std::string def { "define " + get_ir_type(decl->returns()) + " @" };
 	def += parent->mangle(decl->name()) + "(";
 	int j { 0 };
-	for (auto i { decl->args_begin() }, e { decl->args_end() }; i != e; ++i, ++j) {
+	for (
+		auto i { decl->args_begin() }, e { decl->args_end() };
+		i != e; ++i, ++j
+	) {
 		if (j) { def += ", "; }
 		auto r { Reference::create(gen_.next_id(), (**i).type()) };
 		def += get_ir_type(r->type()) + " " + r->name();
@@ -807,8 +903,12 @@ void Parser::parse_declaration_sequence(Scoping_Declaration::Ptr parent) {
 			consume(Token_Kind::equal);
 			auto got { parse_expression() };
 			auto lit { std::dynamic_pointer_cast<Literal>(got) };
-			if (! lit) { throw Error { "expression is not const" }; }
-			if (! current_scope->insert(Const_Declaration::create(name, lit))) {
+			if (! lit) {
+				throw Error { "expression is not const" };
+			}
+			if (! current_scope->insert(
+				Const::create(name, lit)
+			)) {
 				throw Error { name + " already defined" };
 			}
 			consume(Token_Kind::semicolon);
@@ -833,10 +933,10 @@ void Parser::parse_declaration_sequence(Scoping_Declaration::Ptr parent) {
 	}
 }
 
-Module_Declaration::Ptr Parser::parse_module() {
+Module::Ptr Parser::parse_module() {
 	consume(Token_Kind::kw_MODULE);
 	expect(Token_Kind::identifier);
-	auto mod = Module_Declaration::create(tok_.identifier());
+	auto mod = Module::create(tok_.identifier());
 	current_scope->insert(mod);
 	Pushed_Scope pushed { mod };
 

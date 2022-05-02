@@ -2,7 +2,7 @@
 
 #include "err.h"
 
-std::string get_ir_type(Type_Declaration::Ptr ty) {
+std::string get_ir_type(Type::Ptr ty) {
 	if (! ty) {
 		return "void";
 	} else if (ty == integer_type) {

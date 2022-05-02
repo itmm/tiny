@@ -11,8 +11,10 @@ enum class Token_Kind {
 	plus, minus, star, slash, l_paren, r_paren,
 	integer_literal, string_literal, period, sym_and, sym_not,
 	equal, less, less_equal, not_equal, greater, greater_equal, kw_ARRAY,
-	kw_BEGIN, kw_CONST, kw_DIV, kw_DO, kw_ELSE, kw_ELSIF, kw_END, kw_FALSE, kw_IF, kw_IMPORT, kw_MOD,
-	kw_MODULE, kw_OF, kw_OR, kw_PROCEDURE, kw_REPEAT, kw_RETURN, kw_THEN, kw_TRUE, kw_TYPE, kw_UNTIL, kw_VAR, kw_WHILE, kw_WITH,
+	kw_BEGIN, kw_CONST, kw_DIV, kw_DO, kw_ELSE, kw_ELSIF, kw_END, kw_FALSE,
+	kw_IF, kw_IMPORT, kw_MOD, kw_MODULE, kw_OF, kw_OR, kw_PROCEDURE,
+	kw_REPEAT, kw_RETURN, kw_THEN, kw_TRUE, kw_TYPE, kw_UNTIL, kw_VAR,
+	kw_WHILE, kw_WITH,
 };
 
 class Token {
@@ -32,11 +34,14 @@ class Token {
 
 		const std::string &raw() const { return raw_; }
 		const std::string &identifier() const {
-			assert(is(Token_Kind::identifier) && "cannot get identifier from non-identifier");
+			assert(is(Token_Kind::identifier));
 			return raw();
 		}
 		const std::string &literal_data() const{
-			assert(is_one_of(Token_Kind::integer_literal, Token_Kind::string_literal) && "cannot get literal data from non-literal");
+			assert(is_one_of(
+				Token_Kind::integer_literal,
+				Token_Kind::string_literal
+			));
 			return raw();
 		}
 };
@@ -46,7 +51,9 @@ class Lexer {
 		int ch_;
 		static int line_;
 	public:
-		Lexer(std::istream &in): in_ { in }, ch_ { in_.get() } { ++line_; }
+		Lexer(std::istream &in): in_ { in }, ch_ { in_.get() } {
+			++line_;
+		}
 		void next(Token &tok);
 
 		static int current_line() { return line_; };
@@ -54,6 +61,9 @@ class Lexer {
 	private:
 		void set_token(Token &tok, std::string raw, Token_Kind kind);
 		void set_token(Token &tok, char raw, Token_Kind kind);
-		void double_token(Token &tok, Token_Kind with_equals, Token_Kind without_equals);
+		void double_token(
+			Token &tok, Token_Kind with_equals, 
+			Token_Kind without_equals
+		);
 		void eat_comment();
 };

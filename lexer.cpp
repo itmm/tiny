@@ -54,7 +54,9 @@ namespace Char_Info {
 	}
 }
 
-void Lexer::double_token(Token &tok, Token_Kind with_equals, Token_Kind without_equals) {
+void Lexer::double_token(
+	Token &tok, Token_Kind with_equals, Token_Kind without_equals
+) {
 	std::string name; name += ch_;
 	ch_ = in_.get();
 	if (ch_ == '=') {
@@ -100,7 +102,8 @@ void Lexer::next(Token &tok) {
 			name += ch_; ch_ = in_.get();
 		}
 		auto got { keywords.find(name) };
-		Token_Kind k = got != keywords.end() ? got->second : Token_Kind::identifier;
+		Token_Kind k = got != keywords.end() ?
+			got->second : Token_Kind::identifier;
 		set_token(tok, name, k);
 	} else if (Char_Info::is_digit(ch_)) {
 		std::string name;
@@ -109,7 +112,8 @@ void Lexer::next(Token &tok) {
 		}
 		set_token(tok, name, Token_Kind::integer_literal);
 	} else switch (ch_) {
-		#define CASE(ch, tk) case ch: set_token(tok, ch, tk); ch_ = in_.get(); break
+		#define CASE(ch, tk) case ch: set_token(tok, ch, tk); \
+			ch_ = in_.get(); break
 		CASE('+', Token_Kind::plus);
 		CASE('-', Token_Kind::minus);
 		CASE('*', Token_Kind::star);

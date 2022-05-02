@@ -2,13 +2,13 @@
 
 #include "err.h"
 
-Type_Declaration::Ptr boolean_type = Type_Declaration::create("BOOLEAN");
-Type_Declaration::Ptr integer_type = Type_Declaration::create("INTEGER");
-Type_Declaration::Ptr real_type = Type_Declaration::create("REAL");
+Type::Ptr boolean_type = Type::create("BOOLEAN");
+Type::Ptr integer_type = Type::create("INTEGER");
+Type::Ptr real_type = Type::create("REAL");
 
-Type_Declaration::Ptr Bool_Trait::oberon_type = boolean_type;
-Type_Declaration::Ptr Integer_Trait::oberon_type = integer_type;
-Type_Declaration::Ptr Real_Trait::oberon_type = real_type;
+Type::Ptr Bool_Trait::oberon_type = boolean_type;
+Type::Ptr Integer_Trait::oberon_type = integer_type;
+Type::Ptr Real_Trait::oberon_type = real_type;
 
 std::string Reference::name() {
 	return "%" + std::to_string(index_);
