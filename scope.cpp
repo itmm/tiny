@@ -1,7 +1,7 @@
 #include "scope.h"
 
-#include "ast.h"
 #include "err.h"
+#include "type.h"
 
 Type::Ptr boolean_type = Type::create("BOOLEAN");
 Type::Ptr integer_type = Type::create("INTEGER");

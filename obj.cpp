@@ -1,4 +1,4 @@
-#include "ast.h"
+#include "obj.h"
 
 Type::Ptr Bool_Trait::oberon_type = boolean_type;
 Type::Ptr Integer_Trait::oberon_type = integer_type;

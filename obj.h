@@ -23,9 +23,7 @@ class Scoping_Declaration: public Declaration {
 };
 
 class Module: public Scoping_Declaration {
-		Module(std::string name):
-			Scoping_Declaration(name, nullptr)
-		{ }
+		Module(std::string name): Scoping_Declaration(name, nullptr) { }
 	public:
 		using Ptr = std::shared_ptr<Module>;
 		static auto create(std::string name) {

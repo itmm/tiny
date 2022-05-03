@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ast.h"
+#include "declaration.h"
 
 #include <map>
 #include <memory>

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ast.h"
 #include "err.h"
 #include "gen.h"
 #include "lexer.h"
+#include "obj.h"
 
 class Parser {
 		Lexer &lexer_;
